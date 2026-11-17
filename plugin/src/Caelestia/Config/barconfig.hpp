@@ -129,8 +129,7 @@ class BarConfig : public settings::ObjectNode {
         DEFAULT_ARG({
             LIST_ENTRY(logo, true),
             LIST_ENTRY(workspaces, true),
-            LIST_ENTRY(spacer, true),
-            LIST_ENTRY(activeWindow, true),
+            LIST_ENTRY(activeWindow, true), // Sylvie: the title sits right under the workspaces
             LIST_ENTRY(spacer, true),
             LIST_ENTRY(tray, true),
             LIST_ENTRY(clock, true),
