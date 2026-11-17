@@ -105,8 +105,8 @@ Item {
         anchors.left: parent.left
         anchors.right: parent.right
 
-        implicitHeight: 1
-        color: Colours.palette.m3outlineVariant
+        implicitHeight: 0 // Sylvie: no rule under the tabs
+        color: "transparent"
     }
 
     component Tab: TabButton {
@@ -131,8 +131,9 @@ Item {
                     root.screenState.dashboardTab = Math.max(root.screenState.dashboardTab - 1, 0);
             }
 
-            implicitWidth: Math.max(icon.width, label.width)
-            implicitHeight: icon.height + label.height
+            // Sylvie: icon beside an uppercase IBM Plex Mono label, centred
+            implicitWidth: icon.width + 8 + label.width
+            implicitHeight: Math.max(icon.height, label.height)
 
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
@@ -149,20 +150,20 @@ Item {
                 implicitHeight: parent.height + Tokens.sizes.dashboard.tabIndicatorSpacing * 2
 
                 radius: Tokens.rounding.medium
-                color: tab.current ? Colours.palette.m3primary : Colours.palette.m3onSurface
+                color: Colours.palette.m3onSurface
                 onClicked: root.screenState.dashboardTab = tab.TabBar.index
             }
 
             MaterialIcon {
                 id: icon
 
-                anchors.horizontalCenter: parent.horizontalCenter
-                anchors.bottom: label.top
+                x: (parent.width - (width + 8 + label.width)) / 2 // icon + label centred in the tab
+                anchors.verticalCenter: parent.verticalCenter
 
                 text: tab.iconName
-                color: tab.current ? Colours.palette.m3primary : Colours.palette.m3onSurfaceVariant
+                color: tab.current ? Colours.palette.m3onSurface : Colours.palette.m3onSurfaceVariant
                 fill: tab.current ? 1 : 0
-                fontStyle: Tokens.font.icon.medium
+                fontStyle: Tokens.font.icon.builders.medium.scale(0.9).build()
 
                 Behavior on fill {
                     Anim {
@@ -174,11 +175,13 @@ Item {
             StyledText {
                 id: label
 
-                anchors.horizontalCenter: parent.horizontalCenter
-                anchors.bottom: parent.bottom
+                anchors.left: icon.right
+                anchors.leftMargin: 8
+                anchors.verticalCenter: parent.verticalCenter
 
-                text: tab.text
-                color: tab.current ? Colours.palette.m3primary : Colours.palette.m3onSurfaceVariant
+                text: tab.text.toUpperCase()
+                font: Qt.font({ family: "IBM Plex Mono", pixelSize: 11.5, weight: Font.Medium, letterSpacing: 2.3 })
+                color: tab.current ? Colours.palette.m3onSurface : Colours.palette.m3onSurfaceVariant
             }
         }
     }
