@@ -4,129 +4,161 @@ import QtQuick
 import Quickshell
 import Caelestia
 import Caelestia.Config
+import Caelestia.I18n
 import Caelestia.Services
 import qs.components
-import qs.components.controls
 import qs.services
-import qs.utils
 
+// Sylvie session menu (design/Sylvie OS Interactive.dc.html): five tall tiles in the right-edge
+// drawer, LOCK, SLEEP, REBOOT, LOG OUT and SHUT DOWN (orange). Each tile is an icon over a small
+// mono label; hover or keyboard focus turns it orange. Up/down (or Tab) to move, Enter to run,
+// Esc to close. Opens with Ctrl+Alt+Delete or Super+Escape, or the bar's power button.
 Column {
     id: root
 
     required property ScreenState screenState
 
-    padding: Tokens.padding.large
-    rightPadding: CUtils.clamp(padding - Config.border.thickness, 0, padding)
-    spacing: Tokens.spacing.large
+    topPadding: 22
+    bottomPadding: 22
+    leftPadding: 18
+    rightPadding: Math.max(20 - Config.border.thickness, 8)
+    spacing: 12
 
-    SessionButton {
-        id: logout
+    Tile {
+        id: lockTile
 
-        icon: Config.session.icons.logout
-        command: Config.session.commands.logout
-
-        KeyNavigation.down: shutdown
+        icon: "lock"
+        label: Tr.tr("LOCK")
+        command: ["loginctl", "lock-session"]
+        KeyNavigation.down: sleepTile
 
         Component.onCompleted: forceActiveFocus()
 
         Connections {
-            function onLauncherChanged(): void {
-                if (!root.screenState.launcher)
-                    logout.forceActiveFocus();
+            function onSessionChanged(): void {
+                if (root.screenState.session)
+                    lockTile.forceActiveFocus();
             }
 
             target: root.screenState
         }
     }
 
-    SessionButton {
-        id: shutdown
+    Tile {
+        id: sleepTile
 
-        icon: Config.session.icons.shutdown
-        command: Config.session.commands.shutdown
-
-        KeyNavigation.up: logout
-        KeyNavigation.down: hibernate
+        icon: "bedtime"
+        label: Tr.tr("SLEEP")
+        command: ["suspend"]
+        KeyNavigation.up: lockTile
+        KeyNavigation.down: rebootTile
     }
 
-    Loader {
-        active: Config.paths.sessionGif.trim() !== ""
+    Tile {
+        id: rebootTile
 
-        sourceComponent: AnimatedImage {
-            width: Tokens.sizes.session.button
-            height: Tokens.sizes.session.button
-            sourceSize.width: width * ((QsWindow.window as QsWindow)?.devicePixelRatio ?? 1)
-
-            playing: visible
-            asynchronous: true
-            speed: Config.general.sessionGifSpeed
-            source: Paths.absolutePath(Config.paths.sessionGif)
-            fillMode: AnimatedImage.PreserveAspectFit
-        }
-    }
-
-    SessionButton {
-        id: hibernate
-
-        icon: Config.session.icons.hibernate
-        command: Config.session.commands.hibernate
-
-        KeyNavigation.up: shutdown
-        KeyNavigation.down: reboot
-    }
-
-    SessionButton {
-        id: reboot
-
-        icon: Config.session.icons.reboot
+        icon: "restart_alt"
+        label: Tr.tr("REBOOT")
         command: Config.session.commands.reboot
-
-        KeyNavigation.up: hibernate
+        KeyNavigation.up: sleepTile
+        KeyNavigation.down: logoutTile
     }
 
-    component SessionButton: IconButton {
-        id: button
+    Tile {
+        id: logoutTile
 
-        required property list<string> command
+        icon: "logout"
+        label: Tr.tr("LOG OUT")
+        command: Config.session.commands.logout
+        KeyNavigation.up: rebootTile
+        KeyNavigation.down: shutdownTile
+    }
+
+    Tile {
+        id: shutdownTile
+
+        icon: "power_settings_new"
+        label: Tr.tr("SHUT DOWN")
+        command: Config.session.commands.shutdown
+        primary: true
+        KeyNavigation.up: logoutTile
+    }
+
+    component Tile: StyledRect {
+        id: tile
+
+        property string icon
+        property string label
+        property list<string> command
+        property bool primary
+
+        readonly property bool lit: primary || activeFocus || mouse.containsMouse
 
         function exec(): void {
+            root.screenState.session = false;
             if (!SessionManager.exec(command))
                 Quickshell.execDetached(command);
         }
 
-        implicitWidth: Tokens.sizes.session.button
-        implicitHeight: Tokens.sizes.session.button
+        implicitWidth: 80
+        implicitHeight: 89
+        radius: 22
+        color: lit ? Colours.palette.m3primary : Colours.tPalette.m3surfaceContainer
 
-        inactiveColour: activeFocus ? Colours.palette.m3secondaryContainer : Colours.tPalette.m3surfaceContainer
-        inactiveOnColour: activeFocus ? Colours.palette.m3onSecondaryContainer : Colours.palette.m3onSurface
-        radius: pressed ? Tokens.rounding.medium : activeFocus ? Tokens.rounding.extraLarge : Tokens.rounding.largeIncreased
-        font: Tokens.font.icon.builders.large.scale(1.3).build()
-        onClicked: exec()
+        // focus ring for keyboard use on the always-orange tile
+        Rectangle {
+            anchors.fill: parent
+            anchors.margins: -4
+            radius: parent.radius + 4
+            color: "transparent"
+            border.width: 2
+            border.color: Colours.palette.m3primary
+            visible: tile.primary && tile.activeFocus
+        }
+
+        Column {
+            anchors.centerIn: parent
+            spacing: 6
+
+            MaterialIcon {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: tile.icon
+                color: tile.lit ? Colours.palette.m3onPrimary : Colours.palette.m3onSurface
+                fontStyle: Tokens.font.icon.builders.large.scale(1.15).build()
+            }
+
+            StyledText {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: tile.label
+                font: Qt.font({ family: "IBM Plex Mono", pixelSize: 8.5, weight: Font.Medium, letterSpacing: 1.4 })
+                color: tile.lit ? Colours.palette.m3onPrimary : Colours.palette.m3onSurface
+            }
+        }
+
+        MouseArea {
+            id: mouse
+
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: tile.exec()
+        }
 
         Keys.onEnterPressed: exec()
         Keys.onReturnPressed: exec()
         Keys.onEscapePressed: root.screenState.session = false
         Keys.onPressed: event => {
-            if (!Config.session.vimKeybinds)
-                return;
-
-            if (event.modifiers & Qt.ControlModifier) {
-                if ((event.key === Qt.Key_J || event.key === Qt.Key_N) && KeyNavigation.down) {
-                    KeyNavigation.down.focus = true;
-                    event.accepted = true;
-                } else if ((event.key === Qt.Key_K || event.key === Qt.Key_P) && KeyNavigation.up) {
-                    KeyNavigation.up.focus = true;
-                    event.accepted = true;
-                }
-            } else if (event.key === Qt.Key_Tab && KeyNavigation.down) {
-                KeyNavigation.down.focus = true;
+            if (event.key === Qt.Key_Tab && KeyNavigation.down) {
+                KeyNavigation.down.forceActiveFocus();
                 event.accepted = true;
-            } else if (event.key === Qt.Key_Backtab || (event.key === Qt.Key_Tab && (event.modifiers & Qt.ShiftModifier))) {
-                if (KeyNavigation.up) {
-                    KeyNavigation.up.focus = true;
-                    event.accepted = true;
-                }
+            } else if (event.key === Qt.Key_Backtab && KeyNavigation.up) {
+                KeyNavigation.up.forceActiveFocus();
+                event.accepted = true;
             }
+        }
+
+        Behavior on color {
+            CAnim {}
         }
     }
 }
