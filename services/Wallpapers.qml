@@ -13,7 +13,17 @@ Searcher {
 
     readonly property string currentNamePath: `${Paths.state}/wallpaper/path.txt`
     readonly property list<string> smartArg: GlobalConfig.services.smartScheme ? [] : ["--no-smart"]
-    readonly property string fallback: Quickshell.shellPath("assets/wallpaper.webp")
+    // Sylvie: the stock Sylvie wallpaper is the fallback
+    readonly property string fallback: "/usr/share/backgrounds/sylvie/w02.jpg"
+    // Sylvie: display names for the stock wallpapers (design/tokens.json)
+    readonly property var sylvieNames: ({ w02: "Sunburst", w03: "Poolside", w04: "Rocket", w05: "Prototype 7", w06: "Skyline", w07: "Control Room", w08: "Bloom", w10: "Sylvie" })
+
+    // { num: "08", name: "Bloom" } for a wallpaper path
+    function displayInfo(path: string): var {
+        const base = String(path).split("/").pop().replace(/\.[^.]+$/, "");
+        const m = base.match(/^w(\d+)$/);
+        return { num: m ? m[1].padStart(2, "0") : "", name: sylvieNames[base] ?? base.replace(/[-_]+/g, " ") };
+    }
 
     property bool showPreview: false
     readonly property string current: showPreview ? previewPath : actualCurrent
@@ -30,11 +40,17 @@ Searcher {
     }
 
     function setRandom(): void {
-        Quickshell.execDetached(["caelestia", "wallpaper", "-r", ...smartArg]);
+        // Sylvie: pick here so the choice also goes through sylvie-wallpaper
+        const others = list.filter(w => w.path !== actualCurrent);
+        if (others.length > 0)
+            setWallpaper(others[Math.floor(Math.random() * others.length)].path);
     }
 
     function setWallpaper(path: string): void {
         actualCurrent = path;
+        // Sylvie: sylvie-wallpaper paints it (awww for images/GIFs, mpvpaper for video); caelestia
+        // records it and, with the dynamic scheme, regenerates the colours
+        Quickshell.execDetached(["sylvie-wallpaper", "set", path]);
         Quickshell.execDetached(["caelestia", "wallpaper", "-f", path, ...smartArg]);
     }
 
