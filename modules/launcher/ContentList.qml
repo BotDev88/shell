@@ -75,19 +75,35 @@ Item {
         }
     }
 
-    Loader {
-        id: appList
-
-        active: false
-
+    // Sylvie: results sit in a rounded frame with a hairline border (Launch Control)
+    ClipRect {
         anchors.fill: parent
+        radius: 18
+        visible: root.state === "apps"
 
-        sourceComponent: AppList {
-            objectName: "launcherAppList"
+        Loader {
+            id: appList
 
-            search: root.search
-            screenState: root.screenState
+            active: false
+
+            anchors.fill: parent
+
+            sourceComponent: AppList {
+                objectName: "launcherAppList"
+
+                search: root.search
+                screenState: root.screenState
+            }
         }
+    }
+
+    Rectangle {
+        anchors.fill: parent
+        visible: root.state === "apps"
+        radius: 18
+        color: "transparent"
+        border.width: 1
+        border.color: Colours.palette.m3outlineVariant
     }
 
     Loader {
@@ -123,8 +139,8 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
 
         MaterialIcon {
-            text: root.state === "wallpapers" ? "wallpaper_slideshow" : "manage_search"
-            color: Colours.palette.m3onSurfaceVariant
+            text: root.state === "wallpapers" ? "wallpaper_slideshow" : "radar"
+            color: root.state === "wallpapers" ? Colours.palette.m3onSurfaceVariant : Colours.palette.m3primary
             fontStyle: Tokens.font.icon.extraLarge
 
             anchors.verticalCenter: parent.verticalCenter
@@ -134,9 +150,9 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
 
             StyledText {
-                text: root.state === "wallpapers" ? Tr.tr("No wallpapers found") : Tr.tr("No results")
+                text: root.state === "wallpapers" ? Tr.tr("No wallpapers found") : Tr.tr("NOTHING ON THE RADAR")
                 color: Colours.palette.m3onSurfaceVariant
-                font: Tokens.font.body.builders.large.weight(Font.Medium).build()
+                font: root.state === "wallpapers" ? Tokens.font.body.builders.large.weight(Font.Medium).build() : Qt.font({ family: "IBM Plex Mono", pixelSize: 13, weight: Font.Medium, letterSpacing: 2.6 })
             }
 
             StyledText {

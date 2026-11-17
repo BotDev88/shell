@@ -59,19 +59,20 @@ StyledListView {
         onValuesChanged: root.currentIndex = 0
     }
 
-    spacing: Tokens.spacing.small
+    // Sylvie: rows touch (hairlines between them, see LauncherRow); 64px per app/action row.
+    spacing: 0
     orientation: Qt.Vertical
-    implicitHeight: (Tokens.sizes.launcher.itemHeight + spacing) * Math.min(Config.launcher.maxShown, count) - spacing
+    implicitHeight: Math.min(contentHeight, 64 * Math.min(Config.launcher.maxShown, count))
 
     preferredHighlightBegin: 0
     preferredHighlightEnd: height
     highlightRangeMode: ListView.ApplyRange
 
     highlightFollowsCurrentItem: false
+    // Sylvie: the selected row is filled orange (Launch Control)
     highlight: StyledRect {
-        radius: Tokens.rounding.large
-        color: Colours.palette.m3onSurface
-        opacity: 0.08
+        radius: 0
+        color: Colours.palette.m3primary
 
         y: root.currentItem?.y ?? 0
         implicitWidth: root.width

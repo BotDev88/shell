@@ -123,6 +123,19 @@ class LauncherConfig : public settings::ObjectNode {
                 { u"description"_s, mark(u"Lock the current session"_s) },
                 { u"command"_s, QStringList{ u"loginctl"_s, u"lock-session"_s } },
             }),
+            // Sylvie: open the dashboard drawer, and close every window on this workspace
+            vmap({
+                { u"name"_s, markCtx(u"Dashboard"_s, u"launcher action"_s) },
+                { u"icon"_s, u"dashboard"_s },
+                { u"description"_s, mark(u"Open the dashboard"_s) },
+                { u"command"_s, QStringList{ u"toggleDashboard"_s } },
+            }),
+            vmap({
+                { u"name"_s, markCtx(u"Clear"_s, u"launcher action"_s) },
+                { u"icon"_s, u"clear_all"_s },
+                { u"description"_s, mark(u"Close all windows on this workspace"_s) },
+                { u"command"_s, QStringList{ u"clearWorkspace"_s } },
+            }),
             vmap({
                 { u"name"_s, markCtx(u"Sleep"_s, u"launcher action"_s) },
                 { u"icon"_s, u"bedtime"_s },
