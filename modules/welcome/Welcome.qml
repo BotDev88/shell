@@ -19,10 +19,19 @@ Scope {
     id: root
 
     property bool open
+    property list<string> order: ["hello", "look", "keys", "switchboard", "additions", "done"]
+    property int lastNotified: 0
     readonly property string stateDir: `${Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state"}/sylvie`
     readonly property string doneFile: `${stateDir}/welcomed`
 
     function show(): void {
+        order = ["hello", "look", "keys", "switchboard", "additions", "done"];
+        open = true;
+    }
+
+    function showPage(name: string): void {
+        open = false;
+        order = [name];
         open = true;
     }
 
@@ -56,7 +65,43 @@ Scope {
             root.show();
         }
 
+        // one page on its own: switchboard, additions, keys, look, updates
+        function page(name: string): void {
+            root.showPage(name);
+        }
+
         target: "welcome"
+    }
+
+    // Updates: check 10 minutes after login, then every 6 hours; remind once per new batch
+    Timer {
+        interval: 6 * 60 * 60 * 1000
+        repeat: true
+        running: true
+        onTriggered: updCheck.running = true
+    }
+
+    Timer {
+        interval: 10 * 60 * 1000
+        running: true
+        onTriggered: updCheck.running = true
+    }
+
+    Process {
+        id: updCheck
+
+        command: ["sylvie-updates", "check"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    const st = JSON.parse(text);
+                    const n = st.official + st.flatpak;
+                    if (n > root.lastNotified)
+                        Quickshell.execDetached(["notify-send", "-a", "Sylvie", "-i", "system-software-update", Tr.tr("Updates waiting"), Tr.tr("%1 updates are ready. Type >updates in Launch Control when it suits you.").arg(n)]);
+                    root.lastNotified = n;
+                } catch (e) {}
+            }
+        }
     }
 
     LazyLoader {
@@ -76,7 +121,8 @@ Scope {
 
             WelcomeContent {
                 anchors.fill: parent
-                onFinished: root.finish()
+                order: root.order
+                onFinished: root.order.length > 1 ? root.finish() : (root.open = false)
             }
         }
     }

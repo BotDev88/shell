@@ -17,8 +17,11 @@ Item {
 
     signal finished
 
+    // pages to show, in order: the first-login tour, or a single page opened directly
+    property list<string> order: ["hello", "look", "keys", "switchboard", "additions", "done"]
+    readonly property list<string> allPages: ["hello", "look", "keys", "switchboard", "additions", "done", "updates"]
     property int page: 0
-    readonly property int pages: 5
+    readonly property int pages: order.length
     property string realName
     readonly property string firstName: (realName.split(",")[0].trim().split(" ")[0]) || SysInfo.user
 
@@ -87,13 +90,15 @@ Item {
         anchors.margins: 36
         anchors.topMargin: 18
         anchors.bottomMargin: 12
-        currentIndex: root.page
+        currentIndex: root.allPages.indexOf(root.order[root.page] ?? "hello")
 
         HelloPage {}
         LookPage {}
         KeysPage {}
+        SwitchboardPage {}
         AdditionsPage {}
         DonePage {}
+        UpdatesPage {}
     }
 
     // ---- footer ----
@@ -110,6 +115,7 @@ Item {
         Row {
             anchors.verticalCenter: parent.verticalCenter
             spacing: 8
+            visible: root.pages > 1
 
             Repeater {
                 model: root.pages
@@ -143,7 +149,7 @@ Item {
 
             Pill {
                 primary: true
-                text: root.page === root.pages - 1 ? Tr.tr("LET'S GO") : Tr.tr("NEXT")
+                text: root.page < root.pages - 1 ? Tr.tr("NEXT") : root.pages > 1 ? Tr.tr("LET'S GO") : Tr.tr("CLOSE")
                 icon: "arrow_forward"
                 onClicked: root.page === root.pages - 1 ? root.finished() : root.page++
             }
@@ -629,6 +635,456 @@ Item {
                 font: Qt.font({ family: "Josefin Sans", pixelSize: 18 })
                 color: root.dim
             }
+        }
+    }
+
+    component SwitchboardPage: ColumnLayout {
+        id: sb
+
+        property var status: ({ settings: {}, providers: [], ollamaInstalled: false })
+        property var hw: ({ ramGb: 0, vramGb: 0, gpus: [], suggestion: { size: "none", model: "" } })
+        property string busyLine
+        readonly property var current: status.providers.find(p => p.id === status.settings.provider) ?? null
+
+        function refresh(): void {
+            statusProc.running = true;
+        }
+
+        function run(cmd: list<string>): void {
+            runner.createObject(sb, { command: cmd });
+        }
+
+        spacing: 14
+
+        Component.onCompleted: {
+            refresh();
+            hwProc.running = true;
+        }
+
+        Process {
+            id: statusProc
+
+            command: ["sylvie-switchboard", "status"]
+            stdout: StdioCollector {
+                onStreamFinished: {
+                    try {
+                        sb.status = JSON.parse(text);
+                    } catch (e) {}
+                }
+            }
+        }
+
+        Process {
+            id: hwProc
+
+            command: ["sylvie-switchboard", "hardware"]
+            stdout: StdioCollector {
+                onStreamFinished: {
+                    try {
+                        sb.hw = JSON.parse(text);
+                    } catch (e) {}
+                }
+            }
+        }
+
+        Component {
+            id: runner
+
+            Process {
+                running: true
+                stdout: SplitParser {
+                    onRead: data => {
+                        if (data.trim())
+                            sb.busyLine = data.trim().replace(/^[>!]\s*/, "");
+                    }
+                }
+                onExited: {
+                    sb.refresh();
+                    destroy();
+                }
+            }
+        }
+
+        // stores the typed key through stdin, so it never shows up in a process list
+        Process {
+            id: keyProc
+
+            property string key
+
+            stdinEnabled: true
+            command: ["sylvie-switchboard", "key", "set", sb.status.settings.provider ?? "anthropic"]
+            onStarted: {
+                write(key);
+                stdinEnabled = false;
+                key = "";
+            }
+            onExited: {
+                stdinEnabled = true;
+                sb.refresh();
+            }
+        }
+
+        PageTitle {
+            title: Tr.tr("The Switchboard")
+            sub: Tr.tr("Which AI Sylvie talks to. Keys go in the system keyring, never in a file.")
+        }
+
+        Row {
+            spacing: 8
+
+            Repeater {
+                model: sb.status.providers
+
+                Pill {
+                    required property var modelData
+
+                    text: modelData.name.toUpperCase()
+                    icon: modelData.hasKey ? "check" : ""
+                    primary: sb.status.settings.provider === modelData.id
+                    onClicked: sb.run(["sylvie-switchboard", "set", "provider", modelData.id])
+                }
+            }
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 12
+            visible: !!sb.current && sb.current.id !== "ollama"
+
+            StyledRect {
+                Layout.fillWidth: true
+                implicitHeight: 48
+                radius: 24
+                color: root.tile
+                border.width: keyField.activeFocus ? 2 : 1
+                border.color: keyField.activeFocus ? Colours.palette.m3primary : Colours.palette.m3outlineVariant
+
+                MaterialIcon {
+                    id: keyIcon
+
+                    anchors.left: parent.left
+                    anchors.leftMargin: 18
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "key"
+                    color: Colours.palette.m3primary
+                }
+
+                TextInput {
+                    id: keyField
+
+                    anchors.left: keyIcon.right
+                    anchors.right: parent.right
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 18
+                    anchors.verticalCenter: parent.verticalCenter
+                    echoMode: TextInput.Password
+                    color: Colours.palette.m3onSurface
+                    font: Qt.font({ family: "IBM Plex Mono", pixelSize: 14 })
+                    onAccepted: saveKey.clicked()
+
+                    StyledText {
+                        visible: !keyField.text
+                        text: sb.current?.hasKey ? Tr.tr("A key is stored. Paste a new one to replace it.") : Tr.tr("Paste your %1 API key").arg(sb.current?.name ?? "")
+                        font: Qt.font({ family: "IBM Plex Mono", pixelSize: 13 })
+                        color: root.dim
+                    }
+                }
+            }
+
+            Pill {
+                id: saveKey
+
+                primary: keyField.text.length > 0
+                enabled: keyField.text.length > 0 && !keyProc.running
+                text: Tr.tr("SAVE KEY")
+                icon: "lock"
+                onClicked: {
+                    keyProc.key = keyField.text;
+                    keyField.text = "";
+                    keyProc.running = true;
+                }
+            }
+
+            Pill {
+                visible: sb.current?.hasKey ?? false
+                text: Tr.tr("FORGET")
+                onClicked: sb.run(["sylvie-switchboard", "key", "remove", sb.current.id])
+            }
+        }
+
+        Row {
+            spacing: 8
+
+            StyledText {
+                anchors.verticalCenter: parent.verticalCenter
+                width: 110
+                text: Tr.tr("MODEL")
+                font: Qt.font({ family: "IBM Plex Mono", pixelSize: 10, weight: Font.Medium, letterSpacing: 2 })
+                color: root.dim
+            }
+
+            Repeater {
+                model: sb.current?.models ?? []
+
+                Pill {
+                    required property string modelData
+
+                    text: modelData
+                    primary: sb.status.settings.model === modelData
+                    onClicked: sb.run(["sylvie-switchboard", "set", "model", modelData])
+                }
+            }
+        }
+
+        Row {
+            spacing: 8
+
+            StyledText {
+                anchors.verticalCenter: parent.verticalCenter
+                width: 110
+                text: Tr.tr("PERMISSIONS")
+                font: Qt.font({ family: "IBM Plex Mono", pixelSize: 10, weight: Font.Medium, letterSpacing: 2 })
+                color: root.dim
+            }
+
+            Repeater {
+                model: [["ask", Tr.tr("ASK FIRST")], ["green-auto", Tr.tr("SAFE THINGS WITHOUT ASKING")], ["never", Tr.tr("NEVER ACT")]]
+
+                Pill {
+                    required property var modelData
+
+                    text: modelData[1]
+                    primary: sb.status.settings.permissions === modelData[0]
+                    onClicked: sb.run(["sylvie-switchboard", "set", "permissions", modelData[0]])
+                }
+            }
+        }
+
+        // local AI
+        StyledRect {
+            Layout.fillWidth: true
+            implicitHeight: localRow.implicitHeight + 28
+            radius: 18
+            color: root.tile
+
+            RowLayout {
+                id: localRow
+
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.leftMargin: 18
+                anchors.rightMargin: 14
+                spacing: 14
+
+                MaterialIcon {
+                    text: "memory"
+                    color: Colours.palette.m3secondary
+                    fontStyle: Tokens.font.icon.builders.large.build()
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 3
+
+                    StyledText {
+                        text: Tr.tr("Local AI (optional)")
+                        font: Qt.font({ family: "Josefin Sans", pixelSize: 16, weight: Font.DemiBold })
+                    }
+
+                    StyledText {
+                        Layout.fillWidth: true
+                        elide: Text.ElideRight
+                        text: {
+                            if (sb.busyLine)
+                                return sb.busyLine;
+                            if (sb.hw.suggestion.size === "none")
+                                return Tr.tr("%1 GB RAM: a bit light for running models here. Use a cloud key instead.").arg(sb.hw.ramGb);
+                            const gpu = sb.hw.vramGb > 0 ? Tr.tr(", %1 GB graphics").arg(sb.hw.vramGb) : "";
+                            return Tr.tr("%1 GB RAM%2: a %3 model fits (%4).").arg(sb.hw.ramGb).arg(gpu).arg(sb.hw.suggestion.size).arg(sb.hw.suggestion.model);
+                        }
+                        font: Qt.font({ family: "IBM Plex Mono", pixelSize: 10.5 })
+                        color: sb.busyLine ? Colours.palette.m3secondary : root.dim
+                    }
+                }
+
+                Pill {
+                    visible: sb.hw.suggestion.size !== "none"
+                    primary: true
+                    text: sb.status.ollamaInstalled ? Tr.tr("DOWNLOAD %1").arg(sb.hw.suggestion.model.toUpperCase()) : Tr.tr("INSTALL OLLAMA")
+                    icon: "download"
+                    onClicked: sb.status.ollamaInstalled ? sb.run(["ollama", "pull", sb.hw.suggestion.model]) : sb.run(["sylvie-additions", "install", "ollama"])
+                }
+            }
+        }
+
+        StyledText {
+            text: Tr.tr("Voice and Sylvie's own chat arrive with Phase 6. Nothing is downloaded or sent anywhere until you press a button.")
+            font: Qt.font({ family: "Josefin Sans", pixelSize: 13 })
+            color: root.dim
+        }
+
+        Item {
+            Layout.fillHeight: true
+        }
+    }
+
+    component UpdatesPage: ColumnLayout {
+        id: up
+
+        property var state: null
+        property string line
+        property bool working
+
+        function check(): void {
+            line = Tr.tr("Checking...");
+            checkProc.running = true;
+        }
+
+        spacing: 16
+
+        Component.onCompleted: check()
+
+        Process {
+            id: checkProc
+
+            command: ["sylvie-updates", "check"]
+            stdout: StdioCollector {
+                onStreamFinished: {
+                    try {
+                        up.state = JSON.parse(text);
+                    } catch (e) {}
+                    up.line = "";
+                }
+            }
+        }
+
+        Process {
+            id: applyProc
+
+            command: ["sylvie-updates", "apply"]
+            stdout: SplitParser {
+                onRead: data => {
+                    if (data.trim())
+                        up.line = data.trim().replace(/^[>!]\s*/, "");
+                }
+            }
+            onExited: {
+                up.working = false;
+                up.check();
+            }
+        }
+
+        PageTitle {
+            title: Tr.tr("Updates")
+            sub: Tr.tr("From the official Arch repositories and Flathub. Each system update takes a snapshot first.")
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 14
+
+            Repeater {
+                model: [["system_update", Tr.tr("System"), up.state ? up.state.official : -1], ["apps", Tr.tr("Flatpak apps"), up.state ? up.state.flatpak : -1]]
+
+                StyledRect {
+                    id: countTile
+
+                    required property var modelData
+
+                    Layout.fillWidth: true
+                    implicitHeight: 110
+                    radius: 20
+                    color: root.tile
+
+                    MaterialIcon {
+                        anchors.left: parent.left
+                        anchors.top: parent.top
+                        anchors.margins: 18
+                        text: countTile.modelData[0]
+                        color: Colours.palette.m3secondary
+                        fontStyle: Tokens.font.icon.builders.large.build()
+                    }
+
+                    StyledText {
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        anchors.margins: 14
+                        text: countTile.modelData[2] < 0 ? "--" : String(countTile.modelData[2])
+                        font: Qt.font({ family: "Josefin Sans", pixelSize: 48, weight: Font.Bold, italic: true })
+                    }
+
+                    StyledText {
+                        anchors.left: parent.left
+                        anchors.bottom: parent.bottom
+                        anchors.margins: 18
+                        text: countTile.modelData[1].toUpperCase()
+                        font: Qt.font({ family: "IBM Plex Mono", pixelSize: 10.5, weight: Font.Medium, letterSpacing: 2 })
+                        color: root.dim
+                    }
+                }
+            }
+        }
+
+        StyledRect {
+            Layout.fillWidth: true
+            visible: up.state?.rebootNeeded ?? false
+            implicitHeight: 64
+            radius: 18
+            color: Colours.palette.m3primary
+
+            StyledText {
+                anchors.left: parent.left
+                anchors.leftMargin: 20
+                anchors.verticalCenter: parent.verticalCenter
+                text: Tr.tr("A new kernel is installed. Restart to start using it.")
+                font: Qt.font({ family: "Josefin Sans", pixelSize: 16, weight: Font.DemiBold })
+                color: Colours.palette.m3onPrimary
+            }
+
+            Pill {
+                anchors.right: parent.right
+                anchors.rightMargin: 12
+                anchors.verticalCenter: parent.verticalCenter
+                text: Tr.tr("RESTART")
+                icon: "restart_alt"
+                onClicked: Quickshell.execDetached(["systemctl", "reboot"])
+            }
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 10
+
+            StyledText {
+                Layout.fillWidth: true
+                elide: Text.ElideRight
+                text: up.line || (up.state && up.state.official + up.state.flatpak === 0 ? Tr.tr("Everything's up to date, darling.") : "")
+                font: Qt.font({ family: "IBM Plex Mono", pixelSize: 11 })
+                color: up.working ? Colours.palette.m3secondary : root.dim
+            }
+
+            Pill {
+                text: Tr.tr("CHECK AGAIN")
+                icon: "refresh"
+                enabled: !up.working && !checkProc.running
+                onClicked: up.check()
+            }
+
+            Pill {
+                primary: true
+                text: up.working ? Tr.tr("UPDATING") : Tr.tr("UPDATE NOW")
+                icon: up.working ? "hourglass_top" : "download"
+                enabled: !up.working && !!up.state && up.state.official + up.state.flatpak > 0
+                onClicked: {
+                    up.working = true;
+                    applyProc.running = true;
+                }
+            }
+        }
+
+        Item {
+            Layout.fillHeight: true
         }
     }
 
