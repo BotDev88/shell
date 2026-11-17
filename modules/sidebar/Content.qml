@@ -12,6 +12,20 @@ Item {
     required property Props props
     required property ScreenState screenState
 
+    // Esc closes the sidebar (it holds the keyboard while open)
+    focus: true
+    Keys.onEscapePressed: screenState.sidebar = false
+    Component.onCompleted: forceActiveFocus()
+
+    Connections {
+        function onSidebarChanged(): void {
+            if (root.screenState.sidebar)
+                root.forceActiveFocus();
+        }
+
+        target: root.screenState
+    }
+
     ColumnLayout {
         id: layout
 
