@@ -45,6 +45,17 @@ Searcher {
 
             if (command[0] === "autocomplete" && command.length > 1) {
                 list.search.text = `${GlobalConfig.launcher.actionPrefix}${command[1]} `;
+            } else if (command[0] === "toggleDashboard") {
+                // Sylvie: >dashboard
+                list.screenState.launcher = false;
+                list.screenState.dashboard = true;
+            } else if (command[0] === "clearWorkspace") {
+                // Sylvie: >clear closes (politely) every window on the active workspace
+                list.screenState.launcher = false;
+                for (const t of Hypr.toplevelsForWs(Hypr.activeWsId)) {
+                    const addr = t.address;
+                    Hypr.dispatch(Hypr.usingLua ? `hl.dsp.window.close({ window = "address:0x${addr}" })` : `closewindow address:0x${addr}`);
+                }
             } else if (command[0] === "setMode" && command.length > 1) {
                 list.screenState.launcher = false;
                 Colours.setMode(command[1]);
