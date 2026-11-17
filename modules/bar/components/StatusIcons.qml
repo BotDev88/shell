@@ -12,7 +12,8 @@ import qs.modules.bar.components.status
 StyledRect {
     id: root
 
-    property color colour: Colours.palette.m3secondary
+    // Sylvie: cream icons on the bar itself (no pill); the battery is gold.
+    property color colour: Colours.palette.m3onSurface
     readonly property alias items: iconColumn
 
     readonly property int spacing: Tokens.spacing.medium / 2
@@ -40,7 +41,7 @@ StyledRect {
         return false;
     }
 
-    color: Colours.tPalette.m3surfaceContainer
+    color: "transparent"
     radius: Tokens.rounding.full
 
     clip: true
@@ -138,7 +139,7 @@ StyledRect {
                     roleValue: "battery"
                     delegate: EntryWrapper {
                         BatteryStatus {
-                            colour: root.colour
+                            colour: Colours.palette.m3secondary
                         }
                     }
                 }

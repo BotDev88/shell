@@ -65,8 +65,9 @@ ClipRect {
         return index % shown;
     }
 
-    implicitWidth: Tokens.sizes.bar.innerWidth
-    implicitHeight: workspaces.layoutHeight + workspaces.anchors.margins * 2
+    // Sylvie: a 38px walnut-2 pill with 10px vertical padding and 9px between slots.
+    implicitWidth: 38
+    implicitHeight: workspaces.layoutHeight + 20
 
     color: Colours.tPalette.m3surfaceContainer
     radius: Tokens.rounding.full
@@ -110,10 +111,10 @@ ClipRect {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.top: parent.top
-            anchors.margins: Tokens.padding.extraSmall
+            anchors.topMargin: 10
             implicitHeight: contentHeight
 
-            spacing: Tokens.spacing.extraSmall
+            spacing: 9
             removeDuration: Tokens.anim.durations.expressiveDefaultEffects
 
             model: ScriptModel {

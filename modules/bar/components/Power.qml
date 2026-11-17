@@ -3,31 +3,35 @@ import Caelestia.Config
 import qs.components
 import qs.services
 
+// Sylvie: the power button. A 38px walnut-3 circle with an orange power icon; opens the session
+// menu (design/SylvieBar.dc.html).
 Item {
     id: root
 
     required property ScreenState screenState
 
-    implicitWidth: icon.implicitHeight + Tokens.padding.small
-    implicitHeight: icon.implicitHeight
+    readonly property int size: 38
 
-    StateLayer {
-        // Cursed workaround to make the height larger than the parent
-        anchors.fill: undefined
-        anchors.centerIn: parent
-        implicitWidth: implicitHeight
-        implicitHeight: icon.implicitHeight + Tokens.padding.small
-        radius: Tokens.rounding.full
-        onClicked: root.screenState.session = !root.screenState.session
-    }
+    implicitWidth: size
+    implicitHeight: size
 
-    MaterialIcon {
-        id: icon
+    StyledRect {
+        anchors.fill: parent
+        radius: root.size / 2
+        color: Colours.palette.m3surfaceContainerHigh
 
-        anchors.centerIn: parent
+        StateLayer {
+            radius: parent.radius
+            color: Colours.palette.m3primary
+            onClicked: root.screenState.session = !root.screenState.session
+        }
 
-        text: "power_settings_new"
-        color: Colours.palette.m3error
-        fontStyle: Tokens.font.icon.builders.small.weight(Font.Bold).build()
+        MaterialIcon {
+            anchors.centerIn: parent
+
+            text: "power_settings_new"
+            color: Colours.palette.m3primary
+            fontStyle: Tokens.font.icon.builders.medium.weight(Font.Medium).build()
+        }
     }
 }

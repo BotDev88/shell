@@ -12,7 +12,8 @@ Item {
 
     required property var bar
     required property Brightness.Monitor monitor
-    property color colour: Colours.palette.m3primary
+    // Sylvie: uppercase IBM Plex Mono in dim cream, no icon, at most 280px (design/SylvieBar.dc.html)
+    property color colour: Colours.palette.m3onSurfaceVariant
 
     readonly property string windowTitle: {
         const title = Hypr.activeToplevel?.title;
@@ -31,13 +32,13 @@ Item {
         const otherModules = bar.children.filter(c => c.entryId && c.item !== this && c.entryId !== "spacer");
         const otherHeight = otherModules.reduce((acc, curr) => acc + (curr.item.nonAnimHeight ?? curr.height), 0);
         // Length - 2 cause repeater counts as a child
-        return bar.height - otherHeight - bar.spacing * (bar.children.length - 1) - bar.vPadding * 2;
+        return Math.min(280, bar.height - otherHeight - bar.spacing * (bar.children.length - 1) - bar.vPadding * 2);
     }
     property Title current: text1
 
     clip: true
-    implicitWidth: Math.max(icon.implicitWidth, current.implicitHeight)
-    implicitHeight: icon.implicitHeight + current.implicitWidth + current.anchors.topMargin
+    implicitWidth: current.implicitHeight
+    implicitHeight: current.implicitWidth
 
     Loader {
         asynchronous: true
@@ -73,6 +74,8 @@ Item {
         animate: true
         text: Icons.getAppCategoryIcon(Hypr.activeToplevel?.lastIpcObject.class, "desktop_windows")
         color: root.colour
+        visible: false
+        height: 0
     }
 
     Title {
@@ -87,7 +90,7 @@ Item {
         id: metrics
 
         text: root.windowTitle
-        font: root.Tokens.font.body.builders.small.letterSpacing(1.4).build()
+        font: Qt.font({ family: "IBM Plex Mono", pixelSize: 11, letterSpacing: 2.1, capitalization: Font.AllUppercase })
         elide: Qt.ElideRight
         elideWidth: root.maxHeight - icon.height
 
@@ -108,7 +111,7 @@ Item {
 
         anchors.horizontalCenter: icon.horizontalCenter
         anchors.top: icon.bottom
-        anchors.topMargin: Tokens.spacing.small
+        anchors.topMargin: 0
 
         font: metrics.font
         color: root.colour
