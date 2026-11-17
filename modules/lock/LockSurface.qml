@@ -2,13 +2,16 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Effects
+import Quickshell
 import Quickshell.Wayland
 import Caelestia.Config
-import Caelestia.Multimedia
-import Caelestia.State
+import Caelestia.Services
 import qs.components
 import qs.services
 
+// Sylvie lock screen (design/Sylvie OS Shell.dc.html 1e): the "Sylvie" wallpaper (w10) under a
+// light walnut wash, the lock card bottom right, and session buttons (power off, restart, sleep,
+// log out) bottom left. Fades and rises in on lock; fades out on unlock.
 WlSessionLockSurface {
     id: root
 
@@ -16,9 +19,10 @@ WlSessionLockSurface {
     required property Pam pam
 
     readonly property alias unlocking: unlockAnim.running
+    readonly property string lockWallpaper: "/usr/share/backgrounds/sylvie/w10.jpg"
 
-    contentItem.Config.screen: screen.name
-    contentItem.Tokens.screen: screen.name
+    contentItem.Config.screen: screen?.name ?? ""
+    contentItem.Tokens.screen: screen?.name ?? ""
 
     color: "transparent"
 
@@ -35,48 +39,27 @@ WlSessionLockSurface {
 
         ParallelAnimation {
             Anim {
-                target: lockContent
-                properties: "implicitWidth,implicitHeight"
-                to: lockContent.size
-            }
-            Anim {
-                target: lockBg
-                property: "radius"
-                to: lockContent.radius
-            }
-            Anim {
-                target: content
-                property: "scale"
-                to: 0
-            }
-            Anim {
-                target: content
+                target: card
                 property: "opacity"
                 to: 0
                 type: Anim.StandardSmall
             }
             Anim {
-                target: lockIcon
+                target: card
+                property: "anchors.bottomMargin"
+                to: 40
+            }
+            Anim {
+                target: session
                 property: "opacity"
-                to: 1
-                type: Anim.StandardLarge
+                to: 0
+                type: Anim.StandardSmall
             }
             Anim {
                 target: background
                 property: "opacity"
                 to: 0
                 type: Anim.StandardLarge
-            }
-            SequentialAnimation {
-                PauseAnimation {
-                    duration: Tokens.anim.durations.small
-                }
-                Anim {
-                    type: Anim.Standard
-                    target: lockContent
-                    property: "opacity"
-                    to: 0
-                }
             }
         }
         PropertyAction {
@@ -97,62 +80,23 @@ WlSessionLockSurface {
             to: 1
             type: Anim.StandardLarge
         }
-        SequentialAnimation {
-            ParallelAnimation {
-                Anim {
-                    target: lockContent
-                    property: "scale"
-                    to: 1
-                    type: Anim.FastSpatial
-                }
-                Anim {
-                    target: lockContent
-                    property: "rotation"
-                    to: 360
-                    duration: Tokens.anim.durations.expressiveFastSpatial
-                    easing: Tokens.anim.standardAccel
-                }
-            }
-            ParallelAnimation {
-                Anim {
-                    target: lockIcon
-                    property: "rotation"
-                    to: 360
-                    easing: Tokens.anim.standardDecel
-                }
-                Anim {
-                    type: Anim.DefaultEffects
-                    target: lockIcon
-                    property: "opacity"
-                    to: 0
-                }
-                Anim {
-                    type: Anim.DefaultEffects
-                    target: content
-                    property: "opacity"
-                    to: 1
-                }
-                Anim {
-                    target: content
-                    property: "scale"
-                    to: 1
-                }
-                Anim {
-                    target: lockBg
-                    property: "radius"
-                    to: lockContent.Tokens.rounding.extraLarge * 1.5
-                }
-                Anim {
-                    target: lockContent
-                    property: "implicitWidth"
-                    to: (root.screen?.height ?? 0) * lockContent.Tokens.sizes.lock.heightMult * lockContent.Tokens.sizes.lock.ratio
-                }
-                Anim {
-                    target: lockContent
-                    property: "implicitHeight"
-                    to: (root.screen?.height ?? 0) * lockContent.Tokens.sizes.lock.heightMult
-                }
-            }
+        Anim {
+            target: card
+            property: "opacity"
+            to: 1
+            type: Anim.StandardLarge
+        }
+        Anim {
+            target: card
+            property: "anchors.bottomMargin"
+            to: 70
+            type: Anim.StandardLarge
+        }
+        Anim {
+            target: session
+            property: "opacity"
+            to: 1
+            type: Anim.StandardLarge
         }
     }
 
@@ -162,87 +106,106 @@ WlSessionLockSurface {
         anchors.fill: parent
         opacity: 0
 
+        Image {
+            id: sylvieWall
+
+            anchors.fill: parent
+            source: root.lockWallpaper
+            fillMode: Image.PreserveAspectCrop
+            asynchronous: true
+        }
+
+        // fallback: the current wallpaper if the Sylvie one is missing
+        Image {
+            anchors.fill: parent
+            visible: sylvieWall.status === Image.Error
+            source: visible ? Wallpapers.current : ""
+            fillMode: Image.PreserveAspectCrop
+            asynchronous: true
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            color: Qt.alpha(Colours.palette.m3surface, 0.28)
+        }
+    }
+
+    SylvieLockCard {
+        id: card
+
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.rightMargin: 70
+        anchors.bottomMargin: 20
+        opacity: 0
+        visible: Config.lock.enabled
+
+        lock: root
+
         layer.enabled: true
         layer.effect: MultiEffect {
-            autoPaddingEnabled: false
-            blurEnabled: true
-            blur: 1
-            blurMax: 64
-            blurMultiplier: 1
-        }
-
-        Loader {
-            anchors.fill: parent
-            sourceComponent: Config.lock.useWallpaper ? wallpaperBackground : screencopyBackground
+            shadowEnabled: true
+            shadowBlur: 1
+            shadowVerticalOffset: 20
+            shadowColor: Qt.alpha("black", 0.35)
         }
     }
 
-    Component {
-        id: screencopyBackground
+    Row {
+        id: session
 
-        ScreencopyView {
-            captureSource: root.screen
+        anchors.left: parent.left
+        anchors.bottom: parent.bottom
+        anchors.leftMargin: 40
+        anchors.bottomMargin: 36
+        spacing: 10
+        opacity: 0
+
+        SessionButton {
+            icon: "power_settings_new"
+            colour: Colours.palette.m3primary
+            command: Config.session.commands.shutdown
+        }
+        SessionButton {
+            icon: "restart_alt"
+            command: Config.session.commands.reboot
+        }
+        SessionButton {
+            icon: "bedtime"
+            command: ["suspend"]
+        }
+        SessionButton {
+            icon: "logout"
+            command: Config.session.commands.logout
         }
     }
 
-    Component {
-        id: wallpaperBackground
+    component SessionButton: StyledRect {
+        id: button
 
-        Visual {
-            source: Wallpapers.current
-            playing: PersistentState.wallpaperPlaying
-        }
-    }
+        property string icon
+        property color colour: Colours.palette.m3onSurface
+        property list<string> command
 
-    Item {
-        id: lockContent
+        implicitWidth: 52
+        implicitHeight: 52
+        radius: 18
+        color: Colours.palette.m3surface
 
-        readonly property int size: lockIcon.implicitHeight + Tokens.padding.large * 4
-        readonly property int radius: size / 4 * Tokens.rounding.scale
-
-        anchors.centerIn: parent
-        implicitWidth: size
-        implicitHeight: size
-
-        visible: Config.lock.enabled
-        rotation: 180
-        scale: 0
-
-        StyledRect {
-            id: lockBg
-
-            anchors.fill: parent
-            color: Colours.palette.m3surface
-            radius: parent.radius
-            opacity: Colours.transparency.enabled ? Colours.transparency.base : 1
-
-            layer.enabled: true
-            layer.effect: MultiEffect {
-                shadowEnabled: true
-                blurMax: 15
-                shadowColor: Qt.alpha(Colours.palette.m3shadow, 0.7)
+        StateLayer {
+            radius: button.radius
+            color: button.colour
+            onClicked: {
+                if (!SessionManager.exec(button.command))
+                    Quickshell.execDetached(button.command);
             }
         }
 
         MaterialIcon {
-            id: lockIcon
-
             anchors.centerIn: parent
-            text: "lock"
-            fontStyle: Tokens.font.icon.builders.extraLarge.scale(4).weight(Font.Bold).build()
-            rotation: 180
-        }
-
-        Content {
-            id: content
-
-            anchors.centerIn: parent
-            width: (root.screen?.height ?? 0) * Tokens.sizes.lock.heightMult * Tokens.sizes.lock.ratio - Tokens.padding.extraLargeIncreased
-            height: (root.screen?.height ?? 0) * Tokens.sizes.lock.heightMult - Tokens.padding.extraLargeIncreased
-
-            lock: root
-            opacity: 0
-            scale: 0
+            text: button.icon
+            color: button.colour
+            fontStyle: Tokens.font.icon.builders.medium.build()
         }
     }
 }
