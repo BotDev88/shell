@@ -4,6 +4,8 @@ import Caelestia.Config
 import qs.components
 import qs.services
 
+// Sylvie sidebar (design/Sylvie OS Shell.dc.html 1c): quick toggles and sliders on top, then
+// "Transmissions" (notifications) below a hairline.
 Item {
     id: root
 
@@ -14,14 +16,19 @@ Item {
         id: layout
 
         anchors.fill: parent
-        spacing: Tokens.spacing.medium
+        anchors.topMargin: 30
+        anchors.bottomMargin: 30
+        anchors.rightMargin: 20
+        spacing: 16
 
-        StyledRect {
+        SylvieControls {
+            Layout.fillWidth: true
+            screenState: root.screenState
+        }
+
+        Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
-
-            radius: Tokens.rounding.large
-            color: Colours.tPalette.m3surfaceContainerLow
 
             NotifDock {
                 objectName: "sidebarNotifications"
@@ -29,14 +36,6 @@ Item {
                 props: root.props
                 screenState: root.screenState
             }
-        }
-
-        StyledRect {
-            Layout.topMargin: Tokens.padding.large - layout.spacing
-            Layout.fillWidth: true
-            implicitHeight: 1
-
-            color: Colours.tPalette.m3outlineVariant
         }
     }
 }

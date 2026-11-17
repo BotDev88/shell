@@ -57,8 +57,9 @@ StyledRect {
     implicitHeight: nonAnimHeight
 
     clip: true
-    radius: Tokens.rounding.large
-    color: Colours.layer(Colours.palette.m3surfaceContainer, 2)
+    // Sylvie: walnut tile, 20px radius
+    radius: 20
+    color: Colours.tPalette.m3surfaceContainer
 
     Behavior on implicitHeight {
         Anim {}
@@ -102,7 +103,7 @@ StyledRect {
                 ColouredIcon {
                     implicitSize: Math.round(TokenConfig.sizes.notifs.image * 0.6)
                     source: Quickshell.iconPath(root.appIcon)
-                    colour: root.urgency === NotificationUrgency.Critical ? Colours.palette.m3onError : root.urgency === NotificationUrgency.Low ? Colours.palette.m3onSurface : Colours.palette.m3onSecondaryContainer
+                    colour: root.urgency === NotificationUrgency.Critical ? Colours.palette.m3onError : Colours.palette.m3onPrimary
                     layer.enabled: root.appIcon.endsWith("symbolic")
                 }
             }
@@ -112,14 +113,14 @@ StyledRect {
 
                 MaterialIcon {
                     text: Icons.getNotifIcon(root.activeNotifs[0]?.summary, root.urgency)
-                    color: root.urgency === NotificationUrgency.Critical ? Colours.palette.m3onError : root.urgency === NotificationUrgency.Low ? Colours.palette.m3onSurface : Colours.palette.m3onSecondaryContainer
+                    color: root.urgency === NotificationUrgency.Critical ? Colours.palette.m3onError : Colours.palette.m3onPrimary
                     fontStyle: Tokens.font.icon.medium
                 }
             }
 
             ClipRect {
                 anchors.fill: parent
-                color: root.urgency === NotificationUrgency.Critical ? Colours.palette.m3error : root.urgency === NotificationUrgency.Low ? Colours.layer(Colours.palette.m3surfaceContainerHigh, 3) : Colours.palette.m3secondaryContainer
+                color: root.urgency === NotificationUrgency.Critical ? Colours.palette.m3error : root.urgency === NotificationUrgency.Low ? Colours.palette.m3tertiary : Colours.palette.m3primary
                 radius: Tokens.rounding.full
 
                 Loader {
@@ -140,14 +141,14 @@ StyledRect {
                     implicitWidth: Tokens.sizes.notifs.badge
                     implicitHeight: Tokens.sizes.notifs.badge
 
-                    color: root.urgency === NotificationUrgency.Critical ? Colours.palette.m3error : root.urgency === NotificationUrgency.Low ? Colours.palette.m3surfaceContainerHigh : Colours.palette.m3secondaryContainer
+                    color: root.urgency === NotificationUrgency.Critical ? Colours.palette.m3error : root.urgency === NotificationUrgency.Low ? Colours.palette.m3tertiary : Colours.palette.m3primary
                     radius: Tokens.rounding.full
 
                     ColouredIcon {
                         anchors.centerIn: parent
                         implicitSize: Math.round(Tokens.sizes.notifs.badge * 0.6)
                         source: Quickshell.iconPath(root.appIcon)
-                        colour: root.urgency === NotificationUrgency.Critical ? Colours.palette.m3onError : root.urgency === NotificationUrgency.Low ? Colours.palette.m3onSurface : Colours.palette.m3onSecondaryContainer
+                        colour: root.urgency === NotificationUrgency.Critical ? Colours.palette.m3onError : Colours.palette.m3onPrimary
                         layer.enabled: root.appIcon.endsWith("symbolic")
                     }
                 }
@@ -173,17 +174,17 @@ StyledRect {
 
                 StyledText {
                     Layout.fillWidth: true
-                    text: root.modelData
+                    text: root.modelData.toUpperCase()
                     color: Colours.palette.m3onSurfaceVariant
-                    font: Tokens.font.body.small
+                    font: Qt.font({ family: "IBM Plex Mono", pixelSize: 9.5, weight: Font.Medium, letterSpacing: 1.5 })
                     elide: Text.ElideRight
                 }
 
                 StyledText {
                     animate: true
-                    text: root.activeNotifs[0]?.timeStr ?? ""
-                    color: Colours.palette.m3outline
-                    font: Tokens.font.body.small
+                    text: (root.activeNotifs[0]?.timeStr ?? "").toUpperCase()
+                    color: Colours.palette.m3onSurfaceVariant
+                    font: Qt.font({ family: "IBM Plex Mono", pixelSize: 9.5, weight: Font.Medium, letterSpacing: 1.5 })
                 }
 
                 StyledRect {

@@ -21,56 +21,76 @@ Item {
     readonly property int notifCount: Notifs.list.reduce((acc, n) => n.closed ? acc : acc + 1, 0)
 
     anchors.fill: parent
-    anchors.margins: Tokens.padding.medium
 
     Component.onCompleted: Notifs.list.forEach(n => n.popup = false)
 
+    // Sylvie header: hairline, "Transmissions" + orange count pill ........ CLEAR ALL
     Item {
         id: title
 
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.margins: Tokens.padding.extraSmall
 
-        implicitHeight: Math.max(count.implicitHeight, titleText.implicitHeight)
+        implicitHeight: titleText.implicitHeight + 17
 
-        StyledText {
-            id: count
-
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.left: parent.left
-            anchors.leftMargin: root.notifCount > 0 ? 0 : -width - titleText.anchors.leftMargin
-            opacity: root.notifCount > 0 ? 1 : 0
-
-            text: root.notifCount
-            color: Colours.palette.m3outline
-            font: Tokens.font.label.large
-
-            Behavior on anchors.leftMargin {
-                Anim {}
-            }
-
-            Behavior on opacity {
-                Anim {
-                    type: Anim.DefaultEffects
-                }
-            }
+        Rectangle {
+            anchors.top: parent.top
+            width: parent.width
+            height: 1
+            color: Colours.palette.m3outlineVariant
         }
 
         StyledText {
             id: titleText
 
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.left: count.right
-            anchors.right: parent.right
-            anchors.leftMargin: Tokens.spacing.extraSmall
+            anchors.bottom: parent.bottom
+            anchors.left: parent.left
+            anchors.leftMargin: 4
+            text: Tr.tr("Transmissions")
+            font: Qt.font({ family: "Josefin Sans", pixelSize: 24, weight: Font.Bold, italic: true })
+        }
 
-            // TRANSLATORS: the count itself is rendered separately, immediately to the left
-            text: root.notifCount > 0 ? Tr.trCtxN("notification", "notifications", root.notifCount, "notification count label, number shown separately") : Tr.tr("Notifications")
-            color: Colours.palette.m3outline
-            font: Tokens.font.label.large
-            elide: Text.ElideRight
+        Rectangle {
+            anchors.left: titleText.right
+            anchors.leftMargin: 10
+            anchors.verticalCenter: titleText.verticalCenter
+            visible: root.notifCount > 0
+            implicitWidth: count.implicitWidth + 14
+            implicitHeight: count.implicitHeight + 6
+            radius: height / 2
+            color: Colours.palette.m3primary
+
+            StyledText {
+                id: count
+
+                anchors.centerIn: parent
+                text: String(root.notifCount).padStart(2, "0")
+                font: Qt.font({ family: "IBM Plex Mono", pixelSize: 10, weight: Font.DemiBold })
+                color: Colours.palette.m3onPrimary
+            }
+        }
+
+        StyledText {
+            id: clearAll
+
+            anchors.right: parent.right
+            anchors.rightMargin: 4
+            anchors.baseline: titleText.baseline
+            visible: root.notifCount > 0
+            text: Tr.tr("CLEAR ALL")
+            font: Qt.font({ family: "IBM Plex Mono", pixelSize: 10.5, weight: Font.Medium, letterSpacing: 1.7 })
+            color: clearMouse.containsMouse ? Colours.palette.m3primary : Colours.palette.m3onSurfaceVariant
+
+            MouseArea {
+                id: clearMouse
+
+                anchors.fill: parent
+                anchors.margins: -6
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: clearTimer.start()
+            }
         }
     }
 
@@ -81,9 +101,9 @@ Item {
         anchors.right: parent.right
         anchors.top: title.bottom
         anchors.bottom: parent.bottom
-        anchors.topMargin: Tokens.spacing.medium
+        anchors.topMargin: 16
 
-        radius: Tokens.rounding.medium
+        radius: 20
         color: "transparent"
 
         Loader {
@@ -93,26 +113,20 @@ Item {
             opacity: root.notifCount > 0 ? 0 : 1
 
             sourceComponent: ColumnLayout {
-                spacing: Tokens.spacing.extraLarge
+                spacing: 12
 
-                Image {
-                    asynchronous: true
-                    source: Paths.absolutePath(Config.paths.noNotifsPic)
-                    fillMode: Image.PreserveAspectFit
-                    sourceSize.width: clipRect.width * 0.8 * ((QsWindow.window as QsWindow)?.devicePixelRatio ?? 1)
-
-                    layer.enabled: true
-                    layer.effect: Colouriser {
-                        colorizationColor: Colours.palette.m3outlineVariant
-                        brightness: 1
-                    }
+                MaterialIcon {
+                    Layout.alignment: Qt.AlignHCenter
+                    text: "rocket_launch"
+                    color: Colours.palette.m3primary
+                    fontStyle: Tokens.font.icon.builders.extraLarge.scale(1.5).build()
                 }
 
                 StyledText {
                     Layout.alignment: Qt.AlignHCenter
-                    text: Tr.tr("All up to date!")
-                    color: Colours.palette.m3outlineVariant
-                    font: Tokens.font.headline.builders.small.width(90).build()
+                    text: Tr.tr("ALL QUIET ON THE LAUNCHPAD")
+                    color: Colours.palette.m3onSurfaceVariant
+                    font: Qt.font({ family: "IBM Plex Mono", pixelSize: 11, weight: Font.Medium, letterSpacing: 2.2 })
                 }
             }
 
@@ -168,44 +182,6 @@ Item {
                     interval = 5;
                     return;
                 }
-            }
-        }
-    }
-
-    Loader {
-        asynchronous: true
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
-        anchors.margins: Tokens.padding.medium
-
-        scale: root.notifCount > 0 ? 1 : 0.5
-        opacity: root.notifCount > 0 ? 1 : 0
-        active: opacity > 0
-
-        sourceComponent: IconButton {
-            id: clearBtn
-
-            icon: "clear_all"
-            font: Tokens.font.icon.large
-            onClicked: clearTimer.start()
-
-            Elevation {
-                anchors.fill: parent
-                radius: parent.radius
-                z: -1
-                level: clearBtn.stateLayer.containsMouse ? 4 : 3
-            }
-        }
-
-        Behavior on scale {
-            Anim {
-                type: Anim.FastSpatial
-            }
-        }
-
-        Behavior on opacity {
-            Anim {
-                type: Anim.DefaultEffects
             }
         }
     }
