@@ -2,6 +2,8 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Shapes
+import Quickshell
+import Quickshell.Io
 import Caelestia
 import Caelestia.Config
 import Caelestia.I18n
@@ -24,6 +26,35 @@ Item {
     readonly property int rounding: Tokens.rounding.extraLarge
     readonly property string prefix: GlobalConfig.launcher.actionPrefix
     readonly property int resultCount: list.currentList?.count ?? 0
+    readonly property string wallPath: list.showWallpapers ? (list.currentList?.currentItem?.modelData?.path ?? "") : ""
+    readonly property var wallInfo: Wallpapers.displayInfo(wallPath)
+    property list<color> swatches: []
+
+    // Sylvie: five swatches of the scheme the highlighted wallpaper would generate (preview only)
+    Timer {
+        id: swatchTimer
+
+        interval: 250
+        onTriggered: if (root.wallPath) swatchProc.running = true
+    }
+
+    onWallPathChanged: swatchTimer.restart()
+
+    Process {
+        id: swatchProc
+
+        command: ["caelestia", "wallpaper", "-p", root.wallPath, ...Wallpapers.smartArg]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    const c = JSON.parse(text).colours;
+                    root.swatches = ["primary", "secondary", "tertiary", "primaryContainer", "surfaceContainer"].filter(k => c[k]).map(k => `#${c[k]}`);
+                } catch (e) {
+                    root.swatches = [];
+                }
+            }
+        }
+    }
 
     function runChip(name: string): void {
         search.text = name === "wallpaper" ? `${prefix}wallpaper ` : `${prefix}${name}`;
@@ -76,9 +107,44 @@ Item {
             color: Colours.palette.m3onSurface
         }
 
+        Row {
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            visible: list.showWallpapers && root.swatches.length > 0
+            spacing: 12
+
+            StyledText {
+                anchors.verticalCenter: parent.verticalCenter
+                text: Tr.tr("SCHEME FROM WALLPAPER")
+                font: Qt.font({ family: "IBM Plex Mono", pixelSize: 10, weight: Font.Medium, letterSpacing: 2 })
+                color: Colours.palette.m3onSurfaceVariant
+            }
+
+            Row {
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 4
+
+                Repeater {
+                    model: root.swatches
+
+                    Rectangle {
+                        required property color modelData
+
+                        width: 22
+                        height: 22
+                        radius: 11
+                        color: modelData
+                        border.width: 1
+                        border.color: Colours.palette.m3outlineVariant
+                    }
+                }
+            }
+        }
+
         StyledText {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
+            visible: !list.showWallpapers
             text: `${String(root.resultCount).padStart(2, "0")} ${root.resultCount === 1 ? Tr.tr("RESULT") : Tr.tr("RESULTS")}`
             font: Qt.font({ family: "IBM Plex Mono", pixelSize: 10.5, weight: Font.Medium, letterSpacing: 2.1 })
             color: Colours.palette.m3onSurfaceVariant
@@ -109,6 +175,45 @@ Item {
     }
 
     // action chips: >wallpaper >lock >dashboard >clear
+    // wallpaper mode: "08 Bloom" in the middle, key hint on the right (in place of the chips)
+    Item {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: search.top
+        anchors.leftMargin: root.padding + 4
+        anchors.rightMargin: root.padding + 4
+        anchors.bottomMargin: root.gap
+        height: chips.height
+        visible: list.showWallpapers
+
+        Row {
+            anchors.centerIn: parent
+            spacing: 12
+
+            StyledText {
+                anchors.verticalCenter: parent.verticalCenter
+                visible: root.wallInfo.num !== ""
+                text: root.wallInfo.num
+                font: Qt.font({ family: "IBM Plex Mono", pixelSize: 12, weight: Font.Medium, italic: true })
+                color: Colours.palette.m3primary
+            }
+
+            StyledText {
+                anchors.verticalCenter: parent.verticalCenter
+                text: root.wallInfo.name
+                font: Qt.font({ family: "Josefin Sans", pixelSize: 18, weight: Font.DemiBold })
+            }
+        }
+
+        StyledText {
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            text: Tr.tr("← → BROWSE · ↵ APPLY")
+            font: Qt.font({ family: "IBM Plex Mono", pixelSize: 10, weight: Font.Medium, letterSpacing: 2 })
+            color: Colours.palette.m3onSurfaceVariant
+        }
+    }
+
     Row {
         id: chips
 
@@ -117,6 +222,7 @@ Item {
         anchors.leftMargin: root.padding + 4
         anchors.bottomMargin: root.gap
         spacing: 8
+        opacity: list.showWallpapers ? 0 : 1
 
         Repeater {
             model: ["wallpaper", "lock", "dashboard", "clear"]
@@ -209,6 +315,16 @@ Item {
         Keys.onEscapePressed: root.screenState.launcher = false
 
         Keys.onPressed: event => {
+            // Sylvie: ← → browse horizons in wallpaper mode
+            if (list.showWallpapers && (event.key === Qt.Key_Left || event.key === Qt.Key_Right)) {
+                if (event.key === Qt.Key_Left)
+                    list.currentList?.decrementCurrentIndex();
+                else
+                    list.currentList?.incrementCurrentIndex();
+                event.accepted = true;
+                return;
+            }
+
             // Sylvie: Alt+1..9 picks and runs that row (the key hints on each row)
             if ((event.modifiers & Qt.AltModifier) && event.key >= Qt.Key_1 && event.key <= Qt.Key_9 && !list.showWallpapers) {
                 const idx = event.key - Qt.Key_1;

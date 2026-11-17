@@ -18,17 +18,18 @@ Item {
     z: PathView.z ?? 0 // qmllint disable missing-property
 
     Component.onCompleted: {
-        scale = Qt.binding(() => PathView.isCurrentItem ? 1 : PathView.onPath ? 0.8 : 0);
-        opacity = Qt.binding(() => PathView.onPath ? 1 : 0);
+        // Sylvie: the selected horizon is full size, the rest smaller and dimmed
+        scale = Qt.binding(() => PathView.isCurrentItem ? 1 : PathView.onPath ? 0.55 : 0);
+        opacity = Qt.binding(() => PathView.isCurrentItem ? 1 : PathView.onPath ? 0.7 : 0);
     }
 
     implicitWidth: image.width + Tokens.padding.medium * 2
-    implicitHeight: image.height + label.height + Tokens.spacing.extraSmall + Tokens.padding.large + Tokens.padding.medium
+    implicitHeight: image.height + Tokens.padding.large * 2
 
     StateLayer {
         id: stateLayer
 
-        radius: Tokens.rounding.large
+        radius: 14
         onClicked: {
             Wallpapers.setWallpaper(root.modelData.path);
             root.screenState.launcher = false;
@@ -54,7 +55,7 @@ Item {
         anchors.horizontalCenter: parent.horizontalCenter
         y: Tokens.padding.large
         color: Colours.tPalette.m3surfaceContainer
-        radius: Tokens.rounding.large
+        radius: 14
 
         implicitWidth: Tokens.sizes.launcher.wallpaperWidth
         implicitHeight: implicitWidth / 16 * 9
@@ -73,8 +74,28 @@ Item {
         }
     }
 
+    // Sylvie: orange ring around the selected horizon (3px walnut gap, 3px orange)
+    Rectangle {
+        anchors.centerIn: image
+        width: image.width + 12
+        height: image.height + 12
+        radius: image.radius + 6
+        color: "transparent"
+        border.width: 3
+        border.color: Colours.palette.m3primary
+        opacity: root.PathView.isCurrentItem ? 1 : 0
+
+        Behavior on opacity {
+            Anim {
+                type: Anim.DefaultEffects
+            }
+        }
+    }
+
     StyledText {
         id: label
+
+        visible: false // Sylvie: the name shows under the strip instead
 
         anchors.top: image.bottom
         anchors.topMargin: Tokens.spacing.extraSmall
