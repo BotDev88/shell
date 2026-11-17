@@ -25,7 +25,7 @@ Item {
             },
             {
                 component: mediaComponent,
-                iconName: "queue_music",
+                iconName: "album",
                 text: Tr.tr("Media"),
                 enabled: Config.dashboard.showMedia
             },
@@ -37,7 +37,7 @@ Item {
             },
             {
                 component: weatherComponent,
-                iconName: "cloud",
+                iconName: "partly_cloudy_day",
                 text: Tr.tr("Weather"),
                 enabled: Config.dashboard.showWeather
             }

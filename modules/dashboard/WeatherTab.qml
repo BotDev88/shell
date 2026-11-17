@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
 import Caelestia.Config
@@ -6,275 +8,174 @@ import qs.components
 import qs.services
 import qs.utils
 
-Item {
+// Sylvie weather tab (design/Sylvie OS Interactive.dc.html): a 300px tile with the big
+// temperature, condition icon in gold, "<condition> over <city>", humidity, wind, sunrise and
+// sunset; beside it a five-day forecast in a hairline frame (day, icon, high, low).
+RowLayout {
     id: root
 
-    readonly property var today: Weather.forecast && Weather.forecast.length > 0 ? Weather.forecast[0] : null
+    readonly property color dim: Colours.palette.m3onSurfaceVariant
+    readonly property var days: (Weather.forecast ?? []).slice(0, 5)
 
-    implicitWidth: layout.implicitWidth > 800 ? layout.implicitWidth : 840
-    implicitHeight: layout.implicitHeight
+    function iconColour(icon: string): color {
+        if (/sunny|clear/.test(icon))
+            return Colours.palette.m3secondary;
+        if (/rain|thunder|snow|grain|weather_hail|ac_unit/.test(icon))
+            return Colours.palette.m3tertiary;
+        if (/partly/.test(icon))
+            return Colours.palette.m3secondary;
+        return root.dim;
+    }
+
+    spacing: 12
+
     Component.onCompleted: Weather.reload()
 
-    ColumnLayout {
-        id: layout
+    StyledRect {
+        Layout.preferredWidth: 300
+        Layout.fillHeight: true
+        implicitHeight: now.implicitHeight + 44
+        color: Colours.tPalette.m3surfaceContainer
+        radius: 20
 
-        anchors.fill: parent
-        spacing: Tokens.spacing.medium
+        ColumnLayout {
+            id: now
 
-        RowLayout {
-            Layout.leftMargin: Tokens.padding.large
-            Layout.rightMargin: Tokens.padding.large
-            Layout.fillWidth: true
-
-            Column {
-                spacing: Tokens.spacing.extraSmall
-
-                StyledText {
-                    text: Weather.city || Tr.tr("Loading...")
-                    font: Tokens.font.body.builders.large.size(28).weight(Font.DemiBold).build()
-                    color: Colours.palette.m3onSurface
-                }
-
-                StyledText {
-                    text: Tr.formatDateTime(new Date(), "dddd, MMMM d")
-                    font: Tokens.font.body.small
-                    color: Colours.palette.m3onSurfaceVariant
-                }
-            }
-
-            Item {
-                Layout.fillWidth: true
-            }
-
-            Row {
-                spacing: Tokens.spacing.largeIncreased
-
-                WeatherStat {
-                    icon: "wb_twilight"
-                    label: Tr.tr("Sunrise")
-                    value: Weather.sunrise
-                    colour: Colours.palette.m3tertiary
-                }
-
-                WeatherStat {
-                    icon: "bedtime"
-                    label: Tr.tr("Sunset")
-                    value: Weather.sunset
-                    colour: Colours.palette.m3tertiary
-                }
-            }
-        }
-
-        StyledRect {
-            Layout.fillWidth: true
-            implicitHeight: bigInfoRow.implicitHeight + Tokens.padding.small
-
-            radius: Tokens.rounding.extraLarge * 2
-            color: Colours.tPalette.m3surfaceContainer
+            anchors.fill: parent
+            anchors.margins: 22
+            spacing: 8
 
             RowLayout {
-                id: bigInfoRow
+                Layout.fillWidth: true
 
-                anchors.centerIn: parent
-                spacing: Tokens.spacing.largeIncreased
+                StyledText {
+                    Layout.fillWidth: true
+                    text: Weather.cc ? Weather.formatTemp(Weather.cc.tempC, true) : "--°"
+                    font: Qt.font({ family: "Josefin Sans", pixelSize: 84, weight: Font.Bold, italic: true })
+                }
 
                 MaterialIcon {
-                    Layout.alignment: Qt.AlignVCenter
                     text: Weather.icon
-                    fontStyle: Tokens.font.icon.builders.extraLarge.scale(3).build()
-                    color: Colours.palette.m3secondary
-                    animate: true
-                }
-
-                ColumnLayout {
-                    Layout.alignment: Qt.AlignVCenter
-                    spacing: -Tokens.spacing.small
-
-                    StyledText {
-                        text: Weather.temp
-                        font: Tokens.font.body.builders.large.size(28 * 2).weight(Font.Medium).build()
-                        color: Colours.palette.m3primary
-                    }
-
-                    StyledText {
-                        Layout.leftMargin: Tokens.padding.extraSmall
-                        text: Weather.description
-                        font: Tokens.font.body.medium
-                        color: Colours.palette.m3onSurfaceVariant
-                    }
+                    color: root.iconColour(Weather.icon)
+                    fontStyle: Tokens.font.icon.builders.extraLarge.scale(2.2).build()
                 }
             }
+
+            StyledText {
+                Layout.fillWidth: true
+                text: Weather.city ? Tr.tr("%1 over %2").arg(Weather.description).arg(Weather.city) : Weather.description
+                wrapMode: Text.WordWrap
+                font: Qt.font({ family: "Josefin Sans", pixelSize: 18, weight: Font.DemiBold })
+            }
+
+            GridLayout {
+                Layout.fillWidth: true
+                Layout.topMargin: 8
+                columns: 2
+                rowSpacing: 6
+                columnSpacing: 12
+
+                Fact {
+                    text: Tr.tr("HUMIDITY %1%").arg(Weather.humidity)
+                }
+                Fact {
+                    text: Tr.tr("WIND %1 KM/H").arg(Math.round(Weather.windSpeed))
+                }
+                Fact {
+                    text: Tr.tr("SUNRISE %1").arg(Weather.sunrise)
+                }
+                Fact {
+                    text: Tr.tr("SUNSET %1").arg(Weather.sunset)
+                }
+            }
         }
+    }
+
+    // forecast
+    Rectangle {
+        Layout.fillWidth: true
+        Layout.fillHeight: true
+        Layout.preferredWidth: 540
+        radius: 20
+        color: "transparent"
+        border.width: 1
+        border.color: Colours.palette.m3outlineVariant
 
         RowLayout {
-            Layout.fillWidth: true
-            spacing: Tokens.spacing.medium
-
-            DetailCard {
-                icon: "water_drop"
-                label: Tr.tr("Humidity")
-                value: Strings.percent(Weather.humidity)
-                colour: Colours.palette.m3secondary
-            }
-            DetailCard {
-                icon: "thermostat"
-                label: Tr.trCtx("Feels like", "apparent temperature")
-                value: Weather.feelsLike
-                colour: Colours.palette.m3primary
-            }
-            DetailCard {
-                icon: "air"
-                label: Tr.tr("Wind")
-                value: Weather.windSpeed ? Tr.tr("%1 km/h").arg(Weather.windSpeed) : "--"
-                colour: Colours.palette.m3tertiary
-            }
-        }
-
-        StyledText {
-            Layout.topMargin: Tokens.spacing.medium
-            Layout.leftMargin: Tokens.padding.medium
-            visible: forecastRepeater.count > 0
-            text: Tr.tr("7-day forecast")
-            font: Tokens.font.body.builders.medium.weight(Font.DemiBold).build()
-            color: Colours.palette.m3onSurface
-        }
-
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: Tokens.spacing.medium
+            anchors.fill: parent
+            anchors.margins: 1
+            spacing: 0
 
             Repeater {
-                id: forecastRepeater
+                model: root.days
 
-                model: Weather.forecast
+                Item {
+                    id: day
 
-                StyledRect {
-                    id: forecastItem
-
-                    required property int index
                     required property var modelData
+                    required property int index
+
+                    readonly property string icon: Icons.getWeatherIcon(modelData.weatherCode)
 
                     Layout.fillWidth: true
-                    implicitHeight: forecastItemColumn.implicitHeight + Tokens.padding.medium * 2
+                    Layout.fillHeight: true
+                    Layout.preferredWidth: 108
 
-                    radius: Tokens.rounding.large
-                    color: Colours.tPalette.m3surfaceContainer
+                    Rectangle {
+                        visible: day.index > 0
+                        width: 1
+                        height: parent.height
+                        color: Colours.palette.m3outlineVariant
+                    }
 
-                    ColumnLayout {
-                        id: forecastItemColumn
-
+                    Column {
                         anchors.centerIn: parent
-                        spacing: Tokens.spacing.small
+                        spacing: 12
 
                         StyledText {
-                            Layout.alignment: Qt.AlignHCenter
-                            text: forecastItem.index === 0 ? Tr.trCtx("Today", "forecast column") : Tr.formatDateTime(new Date(forecastItem.modelData.date), "ddd")
-                            font: Tokens.font.body.builders.medium.weight(Font.DemiBold).build()
-                            color: Colours.palette.m3primary
-                        }
-
-                        StyledText {
-                            Layout.topMargin: -Tokens.spacing.extraSmall
-                            Layout.alignment: Qt.AlignHCenter
-                            text: Tr.formatDateTime(new Date(forecastItem.modelData.date), "MMM d")
-                            font: Tokens.font.body.small
-                            opacity: 0.7
-                            color: Colours.palette.m3onSurfaceVariant
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: Tr.formatDateTime(new Date(day.modelData.date), "ddd").toUpperCase()
+                            font: Qt.font({ family: "IBM Plex Mono", pixelSize: 11, weight: Font.Medium, letterSpacing: 2.2 })
+                            color: root.dim
                         }
 
                         MaterialIcon {
-                            Layout.alignment: Qt.AlignHCenter
-                            text: forecastItem.modelData.icon
-                            fontStyle: Tokens.font.icon.extraLarge
-                            color: Colours.palette.m3secondary
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: day.icon
+                            color: root.iconColour(day.icon)
+                            fontStyle: Tokens.font.icon.builders.extraLarge.build()
                         }
 
                         StyledText {
-                            Layout.alignment: Qt.AlignHCenter
-                            text: {
-                                const min = Weather.formatTemp(forecastItem.modelData.minTempC, true);
-                                const max = Weather.formatTemp(forecastItem.modelData.maxTempC, true);
-                                return Tr.trCtx("%1 / %2", "min/max temperature").arg(min).arg(max);
-                            }
-                            font: Tokens.font.body.builders.small.weight(Font.DemiBold).build()
-                            color: Colours.palette.m3tertiary
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: Weather.formatTemp(day.modelData.maxTempC, true)
+                            font: Qt.font({ family: "Josefin Sans", pixelSize: 26, weight: Font.Bold, italic: true })
+                        }
+
+                        StyledText {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: Weather.formatTemp(day.modelData.minTempC, true)
+                            font: Qt.font({ family: "IBM Plex Mono", pixelSize: 11 })
+                            color: root.dim
                         }
                     }
                 }
             }
+
+            StyledText {
+                visible: root.days.length === 0
+                Layout.fillWidth: true
+                horizontalAlignment: Text.AlignHCenter
+                text: Tr.tr("NO FORECAST YET")
+                font: Qt.font({ family: "IBM Plex Mono", pixelSize: 11, letterSpacing: 2.2 })
+                color: root.dim
+            }
         }
     }
 
-    component DetailCard: StyledRect {
-        id: detailRoot
-
-        property string icon
-        property string label
-        property string value
-        property color colour
-
+    component Fact: StyledText {
         Layout.fillWidth: true
-        Layout.preferredHeight: 60
-        radius: Tokens.rounding.medium
-        color: Colours.tPalette.m3surfaceContainer
-
-        Row {
-            anchors.centerIn: parent
-            spacing: Tokens.spacing.medium
-
-            MaterialIcon {
-                text: detailRoot.icon
-                color: detailRoot.colour
-                fontStyle: Tokens.font.icon.large
-                anchors.verticalCenter: parent.verticalCenter
-            }
-
-            Column {
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: 0
-
-                StyledText {
-                    text: detailRoot.label
-                    font: Tokens.font.body.small
-                    opacity: 0.7
-                    horizontalAlignment: Text.AlignLeft
-                }
-                StyledText {
-                    text: detailRoot.value
-                    font: Tokens.font.body.builders.small.weight(Font.DemiBold).build()
-                    horizontalAlignment: Text.AlignLeft
-                }
-            }
-        }
-    }
-
-    component WeatherStat: Row {
-        id: weatherStat
-
-        property string icon
-        property string label
-        property string value
-        property color colour
-
-        spacing: Tokens.spacing.small
-
-        MaterialIcon {
-            text: weatherStat.icon
-            fontStyle: Tokens.font.icon.extraLarge
-            color: weatherStat.colour
-        }
-
-        Column {
-            StyledText {
-                text: weatherStat.label
-                font: Tokens.font.body.small
-                color: Colours.palette.m3onSurfaceVariant
-            }
-            StyledText {
-                text: weatherStat.value
-                font: Tokens.font.body.builders.small.weight(Font.DemiBold).build()
-                color: Colours.palette.m3onSurface
-            }
-        }
+        font: Qt.font({ family: "IBM Plex Mono", pixelSize: 11, letterSpacing: 0.9 })
+        color: root.dim
     }
 }
