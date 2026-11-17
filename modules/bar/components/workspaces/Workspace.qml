@@ -84,6 +84,31 @@ Item {
         }
     }
 
+    // Sylvie slot (design/SylvieBar.dc.html): active = 20x34 orange capsule, occupied = 10px cream
+    // dot, empty = 10px ring in the outline colour.
+    Component {
+        id: sylvieComponent
+
+        Rectangle {
+            implicitWidth: root.focused ? 20 : 10
+            implicitHeight: root.focused ? 34 : 10
+            radius: 10
+            color: root.focused ? Colours.palette.m3primary : root.isOccupied ? (root.onOtherMonitor ? root.offMonitorColour : Colours.palette.m3onSurface) : "transparent"
+            border.width: root.focused || root.isOccupied ? 0 : 1.5
+            border.color: Colours.palette.m3outline
+
+            Behavior on implicitWidth {
+                Anim {}
+            }
+            Behavior on implicitHeight {
+                Anim {}
+            }
+            Behavior on color {
+                CAnim {}
+            }
+        }
+    }
+
     Component {
         id: shapeComponent
 
@@ -182,13 +207,17 @@ Item {
             id: indicator
 
             Layout.alignment: Qt.AlignHCenter | Qt.AlignTop
-            Layout.preferredHeight: Tokens.sizes.bar.innerWidth - Tokens.padding.small
+            Layout.preferredHeight: root.displayType === BarWorkspaceDisplay.Icons || root.displayType === BarWorkspaceDisplay.Text ? Tokens.sizes.bar.innerWidth - Tokens.padding.small : root.focused ? 34 : 10
             sourceComponent: {
                 if (root.displayType === BarWorkspaceDisplay.Icons)
                     return iconLoaderComponent;
                 if (root.displayType === BarWorkspaceDisplay.Text)
                     return textComponent;
-                return shapeComponent;
+                return sylvieComponent;
+            }
+
+            Behavior on Layout.preferredHeight {
+                Anim {}
             }
 
             onItemChanged: root.updateShape()
