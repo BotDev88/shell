@@ -19,11 +19,14 @@ StyledRect {
     readonly property bool hasImage: modelData.image.length > 0
     readonly property bool hasAppIcon: modelData.appIcon.length > 0
     readonly property int bodyTextFormat: /[<*_`#\[\]]/.test(modelData.body) ? Text.MarkdownText : Text.PlainText
-    readonly property int nonAnimHeight: summary.implicitHeight + (root.expanded ? Tokens.spacing.extraSmall * 2 + appName.height + body.height + actions.height + actions.anchors.topMargin : bodyPreview.height) + inner.anchors.margins * 2
+    readonly property int nonAnimHeight: Math.max(TokenConfig.sizes.notifs.image, summary.implicitHeight + (root.expanded ? Tokens.spacing.extraSmall * 2 + appName.height + body.height + actions.height + actions.anchors.topMargin : bodyPreview.height)) + inner.anchors.margins * 2 // Sylvie: never shorter than the icon
     property bool expanded: Config.notifs.openExpanded
 
-    color: root.modelData.urgency === NotificationUrgency.Critical ? Colours.palette.m3secondaryContainer : Colours.tPalette.m3surfaceContainer
-    radius: Tokens.rounding.large
+    // Sylvie: walnut tile like the sidebar cards; critical ones get a rose outline
+    color: Colours.tPalette.m3surfaceContainer
+    radius: 20
+    border.width: root.modelData.urgency === NotificationUrgency.Critical ? 2 : 0
+    border.color: Colours.palette.m3error
 
     implicitHeight: inner.implicitHeight
 
@@ -117,7 +120,7 @@ StyledRect {
 
                 sourceComponent: ClipRect {
                     radius: Tokens.rounding.full
-                    color: root.modelData.urgency === NotificationUrgency.Critical ? Colours.palette.m3error : root.modelData.urgency === NotificationUrgency.Low ? Colours.layer(Colours.palette.m3surfaceContainerHighest, 2) : Colours.palette.m3secondaryContainer
+                    color: root.modelData.urgency === NotificationUrgency.Critical ? Colours.palette.m3error : root.modelData.urgency === NotificationUrgency.Low ? Colours.palette.m3tertiary : Colours.palette.m3primary
                     implicitWidth: TokenConfig.sizes.notifs.image
                     implicitHeight: TokenConfig.sizes.notifs.image
 
@@ -148,7 +151,7 @@ StyledRect {
 
                 sourceComponent: StyledRect {
                     radius: Tokens.rounding.full
-                    color: root.modelData.urgency === NotificationUrgency.Critical ? Colours.palette.m3error : root.modelData.urgency === NotificationUrgency.Low ? Colours.layer(Colours.palette.m3surfaceContainerHighest, 2) : Colours.palette.m3secondaryContainer
+                    color: root.modelData.urgency === NotificationUrgency.Critical ? Colours.palette.m3error : root.modelData.urgency === NotificationUrgency.Low ? Colours.palette.m3tertiary : Colours.palette.m3primary
                     implicitWidth: root.hasImage ? Tokens.sizes.notifs.badge : TokenConfig.sizes.notifs.image
                     implicitHeight: root.hasImage ? Tokens.sizes.notifs.badge : TokenConfig.sizes.notifs.image
 
@@ -166,7 +169,7 @@ StyledRect {
                         sourceComponent: ColouredIcon {
                             anchors.fill: parent
                             source: Quickshell.iconPath(root.modelData.appIcon)
-                            colour: root.modelData.urgency === NotificationUrgency.Critical ? Colours.palette.m3onError : root.modelData.urgency === NotificationUrgency.Low ? Colours.palette.m3onSurface : Colours.palette.m3onSecondaryContainer
+                            colour: root.modelData.urgency === NotificationUrgency.Critical ? Colours.palette.m3onError : Colours.palette.m3onPrimary
                             layer.enabled: root.modelData.appIcon.endsWith("symbolic")
                         }
                     }
@@ -179,7 +182,7 @@ StyledRect {
 
                         sourceComponent: MaterialIcon {
                             text: Icons.getNotifIcon(root.modelData.summary, root.modelData.urgency)
-                            color: root.modelData.urgency === NotificationUrgency.Critical ? Colours.palette.m3onError : root.modelData.urgency === NotificationUrgency.Low ? Colours.palette.m3onSurface : Colours.palette.m3onSecondaryContainer
+                            color: root.modelData.urgency === NotificationUrgency.Critical ? Colours.palette.m3onError : Colours.palette.m3onPrimary
                             fontStyle: Tokens.font.icon.medium
                         }
                     }
@@ -230,10 +233,10 @@ StyledRect {
                 anchors.leftMargin: Tokens.spacing.medium
 
                 animate: true
-                text: appNameMetrics.elidedText
+                text: appNameMetrics.elidedText.toUpperCase()
                 maximumLineCount: 1
                 color: Colours.palette.m3onSurfaceVariant
-                font: Tokens.font.label.medium
+                font: Qt.font({ family: "IBM Plex Mono", pixelSize: 9.5, weight: Font.Medium, letterSpacing: 1.5 })
 
                 opacity: root.expanded ? 1 : 0
 
@@ -264,6 +267,7 @@ StyledRect {
                 text: summaryMetrics.elidedText
                 maximumLineCount: 1
                 height: implicitHeight
+                font: Qt.font({ family: "Josefin Sans", pixelSize: 16, weight: Font.DemiBold })
 
                 states: State {
                     name: "expanded"
@@ -314,9 +318,9 @@ StyledRect {
                 anchors.left: summary.right
                 anchors.leftMargin: Tokens.spacing.small
 
-                text: "•"
+                text: "·"
                 color: Colours.palette.m3onSurfaceVariant
-                font: Tokens.font.body.small
+                font: Qt.font({ family: "IBM Plex Mono", pixelSize: 9.5, weight: Font.Medium })
 
                 states: State {
                     name: "expanded"
@@ -342,9 +346,9 @@ StyledRect {
 
                 animate: true
                 horizontalAlignment: Text.AlignLeft
-                text: root.modelData.timeStr
+                text: root.modelData.timeStr.toUpperCase()
                 color: Colours.palette.m3onSurfaceVariant
-                font: Tokens.font.body.small
+                font: Qt.font({ family: "IBM Plex Mono", pixelSize: 9.5, weight: Font.Medium, letterSpacing: 1.5 })
             }
 
             Item {
@@ -359,7 +363,7 @@ StyledRect {
 
                 StateLayer {
                     radius: Tokens.rounding.full
-                    color: root.modelData.urgency === NotificationUrgency.Critical ? Colours.palette.m3onSecondaryContainer : Colours.palette.m3onSurface
+                    color: Colours.palette.m3onSurface
                     onClicked: root.expanded = !root.expanded
                 }
 
@@ -394,7 +398,7 @@ StyledRect {
                 textFormat: root.bodyTextFormat
                 text: bodyPreviewMetrics.elidedText
                 color: Colours.palette.m3onSurfaceVariant
-                font: Tokens.font.body.small
+                font: Qt.font({ family: "Josefin Sans", pixelSize: 13 })
 
                 opacity: root.expanded ? 0 : 1
 
@@ -426,7 +430,7 @@ StyledRect {
                 textFormat: root.bodyTextFormat
                 text: root.modelData.body
                 color: Colours.palette.m3onSurfaceVariant
-                font: Tokens.font.body.small
+                font: Qt.font({ family: "Josefin Sans", pixelSize: 13 })
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                 height: text ? implicitHeight : 0
 
