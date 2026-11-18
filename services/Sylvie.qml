@@ -19,11 +19,16 @@ Singleton {
 
     // [{ role: "user" | "sylvie", text, pending, error, note }]
     property var messages: []
+    // the brain that will actually answer (sylvied's "effective" brain: the local model when the
+    // chosen one has no key); `fallback` is "no key", "no brain" or ""
     property string provider
     property string model
+    property string fallback
     readonly property string brainLabel: {
         if (!model)
             return "";
+        if (fallback === "no brain")
+            return qsTr("NO KEY YET · SEE THE SWITCHBOARD");
         const where = provider === "ollama" ? "LOCAL" : "CLOUD";
         const names = {
             "claude-opus-5-5": "CLAUDE OPUS 5.5",
@@ -98,6 +103,7 @@ Singleton {
         } else if (ev.type === "done") {
             provider = ev.provider;
             model = ev.model;
+            fallback = ev.fallback ?? "";
             const note = ev.fallback === "offline" ? qsTr("Answered by the local model: you're offline.") : ev.fallback === "no key" ? qsTr("Answered by the local model: there's no key for that brain.") : "";
             updateLast({ pending: false, note });
             asker.connected = false;
@@ -180,6 +186,7 @@ Singleton {
                     if (ev.type === "status") {
                         root.provider = ev.provider ?? "";
                         root.model = ev.model ?? "";
+                        root.fallback = ev.fallback ?? "";
                     }
                 } catch (e) {}
                 statusSock.connected = false;
