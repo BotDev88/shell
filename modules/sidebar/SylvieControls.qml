@@ -41,11 +41,31 @@ ColumnLayout {
         onTriggered: duskCheck.running = true
     }
 
+    // Dusk light: warm screen from 19:00 to 07:00 (hyprsunset profiles). A schedule the user
+    // wrote in ~/.config/hypr/hyprsunset.conf is kept; the marker file makes it start at login.
+    readonly property string duskConf: `${Quickshell.env("HOME")}/.config/hypr/hyprsunset.conf`
+    readonly property string duskMarker: `${Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state"}/sylvie/dusk`
+    readonly property bool duskNow: {
+        const h = Time.date.getHours();
+        return h >= 19 || h < 7;
+    }
+
     function toggleDusk(): void {
-        if (duskOn)
-            Quickshell.execDetached(["pkill", "-x", "hyprsunset"]);
-        else
-            Quickshell.execDetached(["hyprsunset", "-t", "4000"]);
+        if (duskOn) {
+            Quickshell.execDetached(["sh", "-c", `pkill -x hyprsunset; rm -f '${duskMarker}'`]);
+        } else {
+            const conf = "profile {
+    time = 07:00
+    identity = true
+}
+
+profile {
+    time = 19:00
+    temperature = 4000
+}
+";
+            Quickshell.execDetached(["sh", "-c", `[ -e '${duskConf}' ] || printf '${conf}' > '${duskConf}'; mkdir -p "$(dirname '${duskMarker}')"; touch '${duskMarker}'; pgrep -x hyprsunset >/dev/null || setsid -f hyprsunset >/dev/null 2>&1`]);
+        }
         duskOn = !duskOn;
     }
 
@@ -86,7 +106,7 @@ ColumnLayout {
         Pill {
             icon: "wb_twilight"
             label: Tr.tr("Dusk light")
-            sub: root.duskOn ? Tr.tr("ON · 4000K") : Tr.tr("OFF")
+            sub: !root.duskOn ? Tr.tr("AT 19:00") : root.duskNow ? Tr.tr("ON · UNTIL 07:00") : Tr.tr("ON · FROM 19:00")
             on: root.duskOn
             onClicked: root.toggleDusk()
         }
