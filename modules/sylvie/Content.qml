@@ -106,7 +106,6 @@ Item {
             }
 
             ColumnLayout {
-                Layout.fillWidth: true
                 spacing: 3
 
                 StyledText {
@@ -132,6 +131,11 @@ Item {
                     font: Qt.font({ family: "IBM Plex Mono", pixelSize: 10.5, letterSpacing: 2 })
                     color: Sylvie.state === "listening" ? root.gold : Sylvie.state === "thinking" || Sylvie.state === "speaking" ? root.orange : Sylvie.state === "offline" ? root.rose : root.dim
                 }
+            }
+
+            // pushes the buttons to the right edge
+            Item {
+                Layout.fillWidth: true
             }
 
             RoundButton {
