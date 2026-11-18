@@ -645,9 +645,20 @@ Item {
         property var hw: ({ ramGb: 0, vramGb: 0, gpus: [], suggestion: { size: "none", model: "" } })
         property string busyLine
         readonly property var current: status.providers.find(p => p.id === status.settings.provider) ?? null
+        property var usage: ({ month: "", providers: [] })
+        readonly property var usageRow: usage.providers.find(p => p.id === status.settings.provider) ?? null
 
         function refresh(): void {
             statusProc.running = true;
+            loadUsage(false);
+        }
+
+        // --refresh asks the providers for account totals, only where an admin key (OpenRouter: its key) is saved
+        function loadUsage(fetch: bool): void {
+            if (usageProc.running)
+                return;
+            usageProc.command = fetch ? ["sylvie-switchboard", "usage", "--refresh"] : ["sylvie-switchboard", "usage"];
+            usageProc.running = true;
         }
 
         function run(cmd: list<string>): void {
@@ -657,8 +668,47 @@ Item {
         spacing: 14
 
         Component.onCompleted: {
-            refresh();
+            statusProc.running = true;
+            loadUsage(true);
             hwProc.running = true;
+        }
+
+        Process {
+            id: usageProc
+
+            stdout: StdioCollector {
+                onStreamFinished: {
+                    try {
+                        sb.usage = JSON.parse(text);
+                    } catch (e) {}
+                }
+            }
+        }
+
+        // admin key through stdin, like the API key below
+        Process {
+            id: adminKeyProc
+
+            property string key
+
+            stdinEnabled: true
+            command: ["sylvie-switchboard", "admin-key", "set", sb.status.settings.provider ?? "anthropic"]
+            stdout: SplitParser {
+                onRead: data => {
+                    if (data.trim())
+                        sb.busyLine = data.trim().replace(/^[>!]\s*/, "");
+                }
+            }
+            onStarted: {
+                write(key);
+                stdinEnabled = false;
+                key = "";
+            }
+            onExited: {
+                stdinEnabled = true;
+                statusProc.running = true;
+                sb.loadUsage(true);
+            }
         }
 
         Process {
@@ -918,14 +968,245 @@ Item {
             }
         }
 
-        StyledText {
-            text: Tr.tr("Voice and Sylvie's own chat arrive with Phase 6. Nothing is downloaded or sent anywhere until you press a button.")
-            font: Qt.font({ family: "Josefin Sans", pixelSize: 13 })
-            color: root.dim
+        UsageCard {
+            Layout.fillWidth: true
+            visible: !!sb.usageRow
+            row: sb.usageRow
+            month: sb.usage.month
+            onSaveAdminKey: key => {
+                adminKeyProc.key = key;
+                adminKeyProc.running = true;
+            }
+            onRemoveAdminKey: sb.run(["sylvie-switchboard", "admin-key", "remove", sb.usageRow.id])
+            onSaveBudget: amount => sb.run(["sylvie-switchboard", "set", "budget", sb.usageRow.id, amount === "" ? "none" : amount])
         }
 
         Item {
             Layout.fillHeight: true
+        }
+    }
+
+    // This month's usage for one provider: Sylvie's own meter, the account's totals, the budget bar.
+    component UsageCard: StyledRect {
+        id: uc
+
+        property var row
+        property string month
+        property string editing // "", "admin" or "budget"
+
+        signal saveAdminKey(string key)
+        signal removeAdminKey
+        signal saveBudget(string amount)
+
+        readonly property bool adminCapable: row?.id === "anthropic" || row?.id === "openai"
+        readonly property color barColour: (row?.percent ?? 0) >= 100 ? Colours.palette.m3error : (row?.percent ?? 0) >= 80 ? Colours.palette.m3secondary : Colours.palette.m3primary
+
+        function tok(n: real): string {
+            if (n >= 1e6)
+                return (n / 1e6).toFixed(1) + "M";
+            if (n >= 1e3)
+                return Math.round(n / 1e3) + "K";
+            return String(n);
+        }
+        function usd(v: real): string {
+            return "$" + Number(v).toFixed(2);
+        }
+        function monthName(): string {
+            const p = month.split("-");
+            return p.length === 2 ? new Date(+p[0], +p[1] - 1, 1).toLocaleDateString(Qt.locale(), "MMMM").toUpperCase() : "";
+        }
+        function localLine(): string {
+            const l = row?.local;
+            if (!l)
+                return "";
+            const t = tok(l.inputTokens + l.outputTokens);
+            if (row.id === "ollama")
+                return Tr.tr("%1 tokens · free").arg(t);
+            return Tr.tr("%1 tokens · %2%3").arg(t).arg(l.costExact ? "" : "≈ ").arg(usd(l.costUsd));
+        }
+        function accountLine(): string {
+            if (!row)
+                return "";
+            if (row.id === "google")
+                return Tr.tr("Account totals not available for Gemini");
+            if (row.id === "ollama")
+                return Tr.tr("Runs on this computer, so it's free");
+            if (adminCapable && !row.hasAdminKey)
+                return Tr.tr("Add an admin key to see the whole account");
+            if (row.id === "openrouter" && !row.hasKey)
+                return Tr.tr("Add your key to see the whole account");
+            const a = row.account;
+            if (a?.error === "HTTP 401" || a?.error === "HTTP 403")
+                return (row.id === "openrouter" ? Tr.tr("%1 refused the key (%2). Check it, or replace it.") : Tr.tr("%1 refused the admin key (%2). Check it, or remove it.")).arg(row.name).arg(a.error);
+            if (!a || a.costUsd === null || a.costUsd === undefined)
+                return a?.error ? Tr.tr("Couldn't reach %1 (%2)").arg(row.name).arg(a.error) : Tr.tr("Asking %1...").arg(row.name);
+            const t = a.tokens === null || a.tokens === undefined ? "" : Tr.tr("%1 tokens · ").arg(tok(a.tokens));
+            const when = a.updated ? Tr.tr(" · UPDATED %1").arg(a.updated.substr(11, 5)) : "";
+            const err = a.error ? Tr.tr(" · couldn't refresh (%1)").arg(a.error) : "";
+            return t + usd(a.costUsd) + when + err;
+        }
+
+        implicitHeight: ucCol.implicitHeight + 28
+        radius: 18
+        color: root.tile
+
+        ColumnLayout {
+            id: ucCol
+
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.leftMargin: 18
+            anchors.rightMargin: 14
+            spacing: 8
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 14
+
+                MaterialIcon {
+                    text: "monitoring"
+                    color: Colours.palette.m3secondary
+                    fontStyle: Tokens.font.icon.builders.large.build()
+                }
+
+                StyledText {
+                    text: Tr.tr("Usage · %1").arg(uc.monthName().toLowerCase().replace(/^./, c => c.toUpperCase()))
+                    font: Qt.font({ family: "Josefin Sans", pixelSize: 16, weight: Font.DemiBold })
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    horizontalAlignment: Text.AlignRight
+                    text: !uc.row ? "" : uc.row.budgetUsd ? Tr.tr("%1 of %2 budget · %3%").arg(uc.usd(uc.row.spentUsd)).arg(uc.usd(uc.row.budgetUsd)).arg(uc.row.percent) : Tr.tr("%1 this month").arg(uc.usd(uc.row.spentUsd))
+                    font: Qt.font({ family: "IBM Plex Mono", pixelSize: 13, weight: Font.DemiBold })
+                    color: uc.row?.budgetUsd ? uc.barColour : Colours.palette.m3onSurface
+                }
+
+                Pill {
+                    visible: uc.adminCapable && uc.editing === ""
+                    text: uc.row?.hasAdminKey ? Tr.tr("REMOVE ADMIN KEY") : Tr.tr("ADD ADMIN KEY")
+                    onClicked: uc.row?.hasAdminKey ? uc.removeAdminKey() : (uc.editing = "admin")
+                }
+
+                Pill {
+                    visible: uc.row?.id !== "ollama" && uc.editing === ""
+                    text: Tr.tr("SET BUDGET")
+                    onClicked: uc.editing = "budget"
+                }
+            }
+
+            // budget bar
+            Rectangle {
+                Layout.fillWidth: true
+                visible: !!uc.row?.budgetUsd
+                implicitHeight: 6
+                radius: 3
+                color: Colours.palette.m3outlineVariant
+
+                Rectangle {
+                    width: parent.width * Math.min(1, (uc.row?.percent ?? 0) / 100)
+                    height: parent.height
+                    radius: 3
+                    color: uc.barColour
+                }
+            }
+
+            GridLayout {
+                Layout.fillWidth: true
+                visible: uc.editing === ""
+                columns: 2
+                columnSpacing: 14
+                rowSpacing: 3
+
+                StyledText {
+                    text: Tr.tr("SYLVIE (THIS MACHINE)")
+                    font: Qt.font({ family: "IBM Plex Mono", pixelSize: 10, weight: Font.Medium, letterSpacing: 2 })
+                    color: root.dim
+                }
+                StyledText {
+                    Layout.fillWidth: true
+                    elide: Text.ElideRight
+                    text: uc.localLine()
+                    font: Qt.font({ family: "IBM Plex Mono", pixelSize: 11 })
+                }
+                StyledText {
+                    text: Tr.tr("WHOLE ACCOUNT")
+                    font: Qt.font({ family: "IBM Plex Mono", pixelSize: 10, weight: Font.Medium, letterSpacing: 2 })
+                    color: root.dim
+                }
+                StyledText {
+                    Layout.fillWidth: true
+                    elide: Text.ElideRight
+                    text: uc.accountLine()
+                    font: Qt.font({ family: "IBM Plex Mono", pixelSize: 11 })
+                    color: uc.row?.account?.error ? root.dim : Colours.palette.m3onSurface
+                }
+            }
+
+            // admin key / budget entry
+            RowLayout {
+                Layout.fillWidth: true
+                visible: uc.editing !== ""
+                spacing: 12
+
+                StyledRect {
+                    Layout.fillWidth: true
+                    implicitHeight: 40
+                    radius: 20
+                    color: Colours.palette.m3surface
+                    border.width: ucField.activeFocus ? 2 : 1
+                    border.color: ucField.activeFocus ? Colours.palette.m3primary : Colours.palette.m3outlineVariant
+
+                    TextInput {
+                        id: ucField
+
+                        anchors.fill: parent
+                        anchors.leftMargin: 18
+                        anchors.rightMargin: 18
+                        verticalAlignment: TextInput.AlignVCenter
+                        echoMode: uc.editing === "admin" ? TextInput.Password : TextInput.Normal
+                        inputMethodHints: uc.editing === "budget" ? Qt.ImhFormattedNumbersOnly : Qt.ImhNone
+                        color: Colours.palette.m3onSurface
+                        font: Qt.font({ family: "IBM Plex Mono", pixelSize: 13 })
+                        onAccepted: ucSave.clicked()
+                        onVisibleChanged: if (visible) forceActiveFocus()
+
+                        StyledText {
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: !ucField.text
+                            text: uc.editing === "admin" ? Tr.tr("Paste your %1 admin key (from the console's admin keys page)").arg(uc.row?.name ?? "") : Tr.tr("Monthly budget in dollars, e.g. 30 (leave empty for none)")
+                            font: Qt.font({ family: "IBM Plex Mono", pixelSize: 12 })
+                            color: root.dim
+                        }
+                    }
+                }
+
+                Pill {
+                    id: ucSave
+
+                    primary: true
+                    enabled: uc.editing === "budget" || ucField.text.length > 0
+                    text: Tr.tr("SAVE")
+                    icon: uc.editing === "admin" ? "lock" : "check"
+                    onClicked: {
+                        if (uc.editing === "admin")
+                            uc.saveAdminKey(ucField.text);
+                        else
+                            uc.saveBudget(ucField.text.trim().replace(/^\$/, ""));
+                        ucField.text = "";
+                        uc.editing = "";
+                    }
+                }
+
+                Pill {
+                    text: Tr.tr("CANCEL")
+                    onClicked: {
+                        ucField.text = "";
+                        uc.editing = "";
+                    }
+                }
+            }
         }
     }
 
