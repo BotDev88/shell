@@ -1036,6 +1036,8 @@ Item {
             if (row.id === "openrouter" && !row.hasKey)
                 return Tr.tr("Add your key to see the whole account");
             const a = row.account;
+            if (a?.error === "HTTP 401" || a?.error === "HTTP 403")
+                return (row.id === "openrouter" ? Tr.tr("%1 refused the key (%2). Check it, or replace it.") : Tr.tr("%1 refused the admin key (%2). Check it, or remove it.")).arg(row.name).arg(a.error);
             if (!a || a.costUsd === null || a.costUsd === undefined)
                 return a?.error ? Tr.tr("Couldn't reach %1 (%2)").arg(row.name).arg(a.error) : Tr.tr("Asking %1...").arg(row.name);
             const t = a.tokens === null || a.tokens === undefined ? "" : Tr.tr("%1 tokens · ").arg(tok(a.tokens));
