@@ -50,6 +50,11 @@ Region {
     }
 
     R {
+        panel: root.panels.sylvie
+        width: panel.width * (1 - root.panels.sylvie.offsetScale)
+    }
+
+    R {
         panel: root.panels.osdWrapper
         x: root.win.width - width
         width: panel.width * (1 - root.panels.osd.offsetScale) + root.borderThickness + sessionRegion.width
