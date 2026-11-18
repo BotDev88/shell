@@ -73,6 +73,28 @@ Scope {
         target: "welcome"
     }
 
+    // AI usage: refresh account totals 2 minutes after login, then every 30 minutes, and send
+    // the 80% / 100% budget warnings (sylvie-switchboard sends each one once a month)
+    Timer {
+        interval: 30 * 60 * 1000
+        repeat: true
+        running: true
+        triggeredOnStart: false
+        onTriggered: usageCheck.running = true
+    }
+
+    Timer {
+        interval: 2 * 60 * 1000
+        running: true
+        onTriggered: usageCheck.running = true
+    }
+
+    Process {
+        id: usageCheck
+
+        command: ["sylvie-switchboard", "usage", "--refresh", "--notify"]
+    }
+
     // Updates: check 10 minutes after login, then every 6 hours; remind once per new batch
     Timer {
         interval: 6 * 60 * 60 * 1000
