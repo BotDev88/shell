@@ -123,6 +123,31 @@ class LauncherConfig : public settings::ObjectNode {
                 { u"description"_s, mark(u"Lock the current session"_s) },
                 { u"command"_s, QStringList{ u"loginctl"_s, u"lock-session"_s } },
             }),
+            // Sylvie: the Welcome app (first-login tour, wallpaper, keys, Additions)
+            vmap({
+                { u"name"_s, markCtx(u"Welcome"_s, u"launcher action"_s) },
+                { u"icon"_s, u"waving_hand"_s },
+                { u"description"_s, mark(u"Open the Welcome app: look, keys and Additions"_s) },
+                { u"command"_s, QStringList{ u"caelestia"_s, u"shell"_s, u"welcome"_s, u"open"_s } },
+            }),
+            vmap({
+                { u"name"_s, markCtx(u"Switchboard"_s, u"launcher action"_s) },
+                { u"icon"_s, u"tune"_s },
+                { u"description"_s, mark(u"AI keys, model, permissions and local AI"_s) },
+                { u"command"_s, QStringList{ u"caelestia"_s, u"shell"_s, u"welcome"_s, u"page"_s, u"switchboard"_s } },
+            }),
+            vmap({
+                { u"name"_s, markCtx(u"Additions"_s, u"launcher action"_s) },
+                { u"icon"_s, u"add_circle"_s },
+                { u"description"_s, mark(u"Install optional apps from their official sources"_s) },
+                { u"command"_s, QStringList{ u"caelestia"_s, u"shell"_s, u"welcome"_s, u"page"_s, u"additions"_s } },
+            }),
+            vmap({
+                { u"name"_s, markCtx(u"Updates"_s, u"launcher action"_s) },
+                { u"icon"_s, u"system_update"_s },
+                { u"description"_s, mark(u"See and install updates"_s) },
+                { u"command"_s, QStringList{ u"caelestia"_s, u"shell"_s, u"welcome"_s, u"page"_s, u"updates"_s } },
+            }),
             // Sylvie: open the dashboard drawer, and close every window on this workspace
             vmap({
                 { u"name"_s, markCtx(u"Dashboard"_s, u"launcher action"_s) },
