@@ -119,7 +119,7 @@ Scope {
                     const st = JSON.parse(text);
                     const n = st.official + st.flatpak;
                     if (n > root.lastNotified)
-                        Quickshell.execDetached(["notify-send", "-a", "Sylvie", "-i", "system-software-update", Tr.tr("Updates waiting"), Tr.tr("%1 updates are ready. Type >updates in Launch Control when it suits you.").arg(n)]);
+                        Quickshell.execDetached(["notify-send", "-a", "Sylvie", "-i", Quickshell.shellPath("assets/sylvie-avatar.png"), Tr.tr("Updates waiting"), Tr.tr("%1 updates are ready. Type >updates in Launch Control when it suits you.").arg(n)]);
                     root.lastNotified = n;
                 } catch (e) {}
             }
