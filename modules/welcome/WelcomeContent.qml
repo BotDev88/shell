@@ -18,8 +18,8 @@ Item {
     signal finished
 
     // pages to show, in order: the first-login tour, or a single page opened directly
-    property list<string> order: ["hello", "look", "keys", "switchboard", "additions", "done"]
-    readonly property list<string> allPages: ["hello", "look", "keys", "switchboard", "additions", "done", "updates"]
+    property list<string> order: ["hello", "themes", "look", "keys", "switchboard", "additions", "done"]
+    readonly property list<string> allPages: ["hello", "look", "keys", "switchboard", "additions", "done", "updates", "themes"]
     property int page: 0
     readonly property int pages: order.length
     property string realName
@@ -99,6 +99,7 @@ Item {
         AdditionsPage {}
         DonePage {}
         UpdatesPage {}
+        ThemesPage {}
     }
 
     // ---- footer ----
@@ -226,6 +227,101 @@ Item {
                         text: Tr.tr("TUBES: 6 WARM, 0 FLICKERING")
                         font: Qt.font({ family: "IBM Plex Mono", pixelSize: 10.5, weight: Font.Medium, letterSpacing: 2.2 })
                         color: root.dim
+                    }
+                }
+            }
+        }
+    }
+
+    // Atomica release themes: one tile per release (star icon, name, its four colours); a click
+    // runs `atomica-theme set`, which changes colours and wallpaper now, boot screens next boot.
+    component ThemesPage: ColumnLayout {
+        spacing: 18
+
+        PageTitle {
+            title: Tr.tr("Pick a theme")
+            sub: Tr.tr("Each Atomica release has its own colours and wallpapers. Change it any time with Super+Ctrl+T.")
+        }
+
+        Flickable {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            clip: true
+            contentHeight: themeGrid.implicitHeight
+            boundsBehavior: Flickable.StopAtBounds
+
+            GridLayout {
+                id: themeGrid
+
+                width: parent.width
+                columns: 5
+                rowSpacing: 12
+                columnSpacing: 12
+
+                Repeater {
+                    model: Atomica.releases
+
+                    Rectangle {
+                        id: themeTile
+
+                        required property var modelData
+                        readonly property bool current: modelData.slug === Atomica.slug
+
+                        Layout.fillWidth: true
+                        implicitHeight: 128
+                        radius: 18
+                        color: themeArea.containsMouse ? Colours.tPalette.m3surfaceContainerHigh : root.tile
+                        border.width: current ? 3 : 0
+                        border.color: Colours.palette.m3primary
+
+                        Column {
+                            anchors.centerIn: parent
+                            spacing: 6
+
+                            Image {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                width: 52
+                                height: 52
+                                source: `/usr/share/atomica/icons/png-256/atomica-${String(themeTile.modelData.number).padStart(2, "0")}-${themeTile.modelData.slug}.png`
+                                sourceSize.width: 104
+                                asynchronous: true
+                            }
+
+                            StyledText {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: `${themeTile.modelData.version} ${themeTile.modelData.codename}`
+                                font: Qt.font({ family: "Josefin Sans", pixelSize: 14, weight: Font.DemiBold })
+                            }
+
+                            Row {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                spacing: 4
+
+                                Repeater {
+                                    model: themeTile.modelData.colors
+
+                                    Rectangle {
+                                        required property var modelData
+
+                                        width: 14
+                                        height: 14
+                                        radius: 7
+                                        color: modelData.hex
+                                        border.width: 1
+                                        border.color: Qt.alpha(Colours.palette.m3onSurface, 0.25)
+                                    }
+                                }
+                            }
+                        }
+
+                        MouseArea {
+                            id: themeArea
+
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: Quickshell.execDetached(["atomica-theme", "set", themeTile.modelData.slug])
+                        }
                     }
                 }
             }
