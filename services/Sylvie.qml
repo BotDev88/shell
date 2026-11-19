@@ -55,6 +55,30 @@ Singleton {
         connectTimeout.restart();
     }
 
+    // push-to-talk: sylvied records until the operator stops talking, transcribes it offline
+    // ("heard"), then answers it like a typed question
+    function listen(): void {
+        if (busy)
+            return;
+        if (!online) {
+            messages = messages.concat([{ role: "sylvie", error: true, text: qsTr("I can't reach my circuits. Sylvie's service isn't running.") }]);
+            return;
+        }
+        messages = messages.concat([{ role: "user", text: qsTr("Listening…"), listening: true }, { role: "sylvie", text: "", pending: true }]);
+        asker.pending = JSON.stringify({ op: "listen", session: "panel" });
+        asker.connected = true;
+        connectTimeout.restart();
+    }
+
+    IpcHandler {
+        target: "sylvie"
+
+        // `caelestia shell sylvie listen` (Super+Space)
+        function listen(): void {
+            root.listen();
+        }
+    }
+
     // a socket that never connects reports nothing, so give up on it after a moment
     Timer {
         id: connectTimeout
@@ -98,7 +122,14 @@ Singleton {
             return;
         }
         const last = messages[messages.length - 1];
-        if (ev.type === "text") {
+        if (ev.type === "heard") {
+            // the "Listening…" bubble becomes what she heard
+            const m = messages.slice();
+            const i = m.length - 2;
+            if (i >= 0 && m[i].role === "user")
+                m[i] = { role: "user", text: ev.text || qsTr("(nothing heard)") };
+            messages = m;
+        } else if (ev.type === "text") {
             updateLast({ text: (last?.text ?? "") + ev.text });
         } else if (ev.type === "done") {
             provider = ev.provider;

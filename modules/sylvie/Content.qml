@@ -306,10 +306,11 @@ Item {
                 spacing: 8
 
                 RoundButton {
-                    icon: "mic"
-                    label: qsTr("Talking to Sylvie arrives with her voice")
-                    enabled: false
-                    filled: false
+                    icon: Sylvie.state === "listening" ? "graphic_eq" : "mic"
+                    label: qsTr("Talk to Sylvie (Super+Space): speak, then pause")
+                    enabled: Sylvie.online && !Sylvie.busy
+                    filled: Sylvie.state === "listening"
+                    onClicked: Sylvie.listen()
                 }
 
                 TextInput {
