@@ -96,11 +96,8 @@ Item {
                     height: 42
                     radius: 21
 
-                    Image {
+                    SylvieFace {
                         anchors.fill: parent
-                        source: Quickshell.shellPath("assets/sylvie-avatar.png")
-                        fillMode: Image.PreserveAspectCrop
-                        asynchronous: true
                     }
                 }
             }

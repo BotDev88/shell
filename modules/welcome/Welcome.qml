@@ -132,7 +132,7 @@ Scope {
         FloatingWindow {
             id: win
 
-            title: Tr.tr("Welcome to Sylvie OS")
+            title: Tr.tr("Welcome to Atomica")
             color: Colours.palette.m3surface
             implicitWidth: 980
             implicitHeight: 640

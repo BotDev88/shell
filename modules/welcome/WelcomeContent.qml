@@ -56,7 +56,7 @@ Item {
 
         StyledText {
             anchors.verticalCenter: parent.verticalCenter
-            text: "SYLVIE OS · PROTOTYPE 7"
+            text: `ATOMICA · ${Atomica.label}`
             font: Qt.font({ family: "IBM Plex Mono", pixelSize: 11, weight: Font.Medium, letterSpacing: 3 })
             color: Colours.palette.m3secondary
         }
@@ -189,11 +189,8 @@ Item {
                     height: 176
                     radius: 88
 
-                    Image {
+                    SylvieFace {
                         anchors.fill: parent
-                        source: Quickshell.shellPath("assets/sylvie-avatar.png")
-                        fillMode: Image.PreserveAspectCrop
-                        mipmap: true
                     }
                 }
             }
@@ -210,7 +207,7 @@ Item {
                 StyledText {
                     Layout.fillWidth: true
                     wrapMode: Text.WordWrap
-                    text: Tr.tr("I'm Sylvie. Prototype 7 is warmed up and ready. Let's pick your look, learn a few keys and add the apps you like. It takes a minute, and you can change all of it later.")
+                    text: Tr.tr("I'm Sylvie, and Atomica is warmed up and ready. Let's pick your look, learn a few keys and add the apps you like. It takes a minute, and you can change all of it later.")
                     font: Qt.font({ family: "Josefin Sans", pixelSize: 18 })
                     color: root.dim
                     lineHeight: 1.25

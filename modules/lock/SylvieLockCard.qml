@@ -78,7 +78,7 @@ ColumnLayout {
 
                 StyledText {
                     anchors.verticalCenter: parent.verticalCenter
-                    text: "SYLVIE OS"
+                    text: "ATOMICA"
                     font: Qt.font({ family: "IBM Plex Mono", pixelSize: 11, weight: Font.Medium, letterSpacing: 4 })
                     color: Colours.palette.m3secondary
                 }
@@ -140,11 +140,9 @@ ColumnLayout {
                             asynchronous: true
                         }
 
-                        Image {
+                        SylvieFace {
                             anchors.fill: parent
                             visible: face.status !== Image.Ready
-                            source: Quickshell.shellPath("assets/sylvie-avatar.png")
-                            fillMode: Image.PreserveAspectCrop
                         }
                     }
                 }
@@ -158,7 +156,7 @@ ColumnLayout {
                     }
 
                     StyledText {
-                        text: "PROTOTYPE 7 · LOCKED"
+                        text: `${Atomica.label} · LOCKED`
                         font: Qt.font({ family: "IBM Plex Mono", pixelSize: 10, weight: Font.Medium, letterSpacing: 1.6 })
                         color: Colours.palette.m3onSurfaceVariant
                     }
