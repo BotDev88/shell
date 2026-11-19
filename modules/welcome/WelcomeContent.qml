@@ -935,7 +935,7 @@ Item {
                     spacing: 3
 
                     StyledText {
-                        text: Tr.tr("Local brain: Qwen3 1.7B, built in")
+                        text: Tr.tr("Local brain (optional)")
                         font: Qt.font({ family: "Josefin Sans", pixelSize: 16, weight: Font.DemiBold })
                     }
 
@@ -946,9 +946,9 @@ Item {
                             if (sb.busyLine)
                                 return sb.busyLine;
                             if (sb.hw.suggestion.size === "none")
-                                return Tr.tr("Private and offline, nothing to download. %1 GB RAM: keep to the built-in brain.").arg(sb.hw.ramGb);
+                                return Tr.tr("%1 GB RAM: a bit light for running a brain here. Use a cloud key instead.").arg(sb.hw.ramGb);
                             const gpu = sb.hw.vramGb > 0 ? Tr.tr(", %1 GB graphics").arg(sb.hw.vramGb) : "";
-                            return Tr.tr("Private and offline, nothing to download. %1 GB RAM%2: a bigger one fits too (%3).").arg(sb.hw.ramGb).arg(gpu).arg(sb.hw.suggestion.model);
+                            return Tr.tr("Private and offline: answers stay on this computer. %1 GB RAM%2: %3 fits.").arg(sb.hw.ramGb).arg(gpu).arg(sb.hw.suggestion.model);
                         }
                         font: Qt.font({ family: "IBM Plex Mono", pixelSize: 10.5 })
                         color: sb.busyLine ? Colours.palette.m3secondary : root.dim
@@ -958,7 +958,7 @@ Item {
                 Pill {
                     visible: sb.hw.suggestion.size !== "none"
                     primary: true
-                    text: sb.status.ollamaInstalled ? Tr.tr("ADD %1 (OPTIONAL)").arg(sb.hw.suggestion.model.toUpperCase()) : Tr.tr("INSTALL OLLAMA")
+                    text: sb.status.ollamaInstalled ? Tr.tr("DOWNLOAD %1").arg(sb.hw.suggestion.model.toUpperCase()) : Tr.tr("INSTALL OLLAMA")
                     icon: "download"
                     onClicked: sb.status.ollamaInstalled ? sb.run(["ollama", "pull", sb.hw.suggestion.model]) : sb.run(["sylvie-additions", "install", "ollama"])
                 }
