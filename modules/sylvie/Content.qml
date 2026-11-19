@@ -204,12 +204,22 @@ Item {
                     width: ListView.view.width
                     implicitHeight: bubble.implicitHeight
 
+                    // The text's own one-line width, measured apart from the bubble: sizing the bubble
+                    // from body.implicitWidth fed back through the wrap and squeezed short messages
+                    // ("hi") to one letter per line.
+                    TextMetrics {
+                        id: natural
+
+                        font: body.font
+                        text: msg.modelData.text ?? ""
+                    }
+
                     Rectangle {
                         id: bubble
 
                         anchors.right: msg.mine ? parent.right : undefined
                         anchors.left: msg.mine ? undefined : parent.left
-                        width: msg.mine ? Math.min(body.implicitWidth + 28, parent.width * 0.8) : parent.width * 0.94
+                        width: msg.mine ? Math.min(Math.ceil(natural.advanceWidth) + 28 + 4, parent.width * 0.8) : parent.width * 0.94
                         implicitHeight: col.implicitHeight + (msg.mine ? 20 : 0)
                         radius: 18
                         topRightRadius: 18
