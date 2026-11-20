@@ -1039,6 +1039,9 @@ Item {
                         Layout.fillWidth: true
                         elide: Text.ElideRight
                         text: {
+                            const dl = BrainDownload;
+                            if (dl.active || ((dl.stage === "done" || dl.stage === "error" || dl.stage === "cancelled") && dl.model === sb.hw.suggestion.model))
+                                return dl.text;
                             if (sb.busyLine)
                                 return sb.busyLine;
                             if (sb.hw.suggestion.size === "none")
@@ -1047,20 +1050,42 @@ Item {
                             return Tr.tr("Private and offline: answers stay on this computer. %1 GB RAM%2: %3 fits (Ollama comes with it).").arg(sb.hw.ramGb).arg(gpu).arg(sb.hw.suggestion.model);
                         }
                         font: Qt.font({ family: "IBM Plex Mono", pixelSize: 10.5 })
-                        color: sb.busyLine ? Colours.palette.m3secondary : root.dim
+                        color: BrainDownload.stage === "error" ? Colours.palette.m3error : (sb.busyLine || BrainDownload.active) ? Colours.palette.m3secondary : root.dim
+                    }
+
+                    // the download's progress: a moving bar while Ollama installs and starts, then the
+                    // real percentage with speed and time left
+                    ProgressTrack {
+                        Layout.fillWidth: true
+                        Layout.topMargin: 6
+                        visible: BrainDownload.active
+                        measured: BrainDownload.measured
+                        value: BrainDownload.percent / 100
+                    }
+
+                    StyledText {
+                        visible: BrainDownload.active && BrainDownload.measured
+                        text: BrainDownload.detail
+                        font: Qt.font({ family: "IBM Plex Mono", pixelSize: 10, weight: Font.Medium, letterSpacing: 1 })
+                        color: root.dim
                     }
                 }
 
                 Pill {
                     visible: sb.hw.suggestion.size !== "none"
+                    enabled: !BrainDownload.active
                     primary: true
-                    text: Tr.tr("DOWNLOAD %1").arg(sb.hw.suggestion.model.toUpperCase())
-                    icon: "download"
-                    // one click: Ollama first if it isn't there (Additions installs and starts it,
-                    // asking for the password), then the model
-                    onClicked: sb.run(["sh", "-c", 'command -v ollama >/dev/null || sylvie-additions install ollama || exit 1; '
-                        + 'for i in $(seq 30); do ollama list >/dev/null 2>&1 && break; sleep 1; done; '
-                        + 'echo "> downloading $0 (about 1.4 GB for qwen3:1.7b)"; ollama pull "$0"', sb.hw.suggestion.model])
+                    text: BrainDownload.active ? Tr.tr("DOWNLOADING…") : BrainDownload.stage === "done" && BrainDownload.model === sb.hw.suggestion.model ? Tr.tr("DOWNLOADED") : Tr.tr("DOWNLOAD %1").arg(sb.hw.suggestion.model.toUpperCase())
+                    icon: BrainDownload.active ? "hourglass_top" : BrainDownload.stage === "done" && BrainDownload.model === sb.hw.suggestion.model ? "check" : "download"
+                    // one click: Ollama first if it isn't there (it asks for the password), then the
+                    // model. It runs on its own (sylvie-brain-get), so closing this page doesn't stop it
+                    onClicked: BrainDownload.start(sb.hw.suggestion.model)
+                }
+
+                Pill {
+                    visible: BrainDownload.active
+                    text: Tr.tr("STOP")
+                    onClicked: BrainDownload.cancel()
                 }
             }
         }
