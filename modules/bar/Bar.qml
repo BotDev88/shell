@@ -122,8 +122,19 @@ ColumnLayout {
             DelegateChoice {
                 roleValue: "logo"
                 delegate: EntryWrapper {
-                    OsIcon {
-                        objectName: "taskbarLogo"
+                    // Sylvie: the logo with Sylvie's orb right under it, in one bar slot
+                    Column {
+                        spacing: Tokens.spacing.medium
+
+                        OsIcon {
+                            objectName: "taskbarLogo"
+                            anchors.horizontalCenter: parent.horizontalCenter
+                        }
+
+                        SylvieOrb {
+                            objectName: "taskbarSylvieOrb"
+                            anchors.horizontalCenter: parent.horizontalCenter
+                        }
                     }
                 }
             }

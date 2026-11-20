@@ -256,8 +256,17 @@ ColumnLayout {
 
             required property var modelData
             readonly property bool loading: false
+            // Atomica: disconnecting the cable takes two clicks (19 Nov 2026: one stray click in the
+            // VM left it offline twice). The first arms it for 3 s; the icon shows "link_off" then.
+            property bool armed: false
 
             visible: root.view === "ethernet"
+
+            Timer {
+                running: ethernetItem.armed
+                interval: 3000
+                onTriggered: ethernetItem.armed = false
+            }
             Layout.preferredHeight: visible ? implicitHeight : 0
             Layout.fillWidth: true
             Layout.rightMargin: Tokens.padding.extraSmall
@@ -314,6 +323,11 @@ ColumnLayout {
 
                     onClicked: {
                         if (ethernetItem.modelData.connected && ethernetItem.modelData.connection) {
+                            if (!ethernetItem.armed) {
+                                ethernetItem.armed = true;
+                                return;
+                            }
+                            ethernetItem.armed = false;
                             Nmcli.disconnectEthernet(ethernetItem.modelData.connection, () => {});
                         } else {
                             Nmcli.connectEthernet(ethernetItem.modelData.connection || "", ethernetItem.modelData.iface || "", () => {});
@@ -326,7 +340,7 @@ ColumnLayout {
 
                     anchors.centerIn: parent
                     animate: true
-                    text: ethernetItem.modelData.connected ? "link_off" : "link"
+                    text: ethernetItem.modelData.connected ? (ethernetItem.armed ? "link_off" : "check") : "link"
                     color: ethernetItem.modelData.connected ? Colours.palette.m3onPrimary : Colours.palette.m3onSurface
 
                     opacity: ethernetItem.loading ? 0 : 1

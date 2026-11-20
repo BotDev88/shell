@@ -75,12 +75,8 @@ RowLayout {
                         height: 76
                         radius: 38
 
-                        Image {
+                        SylvieFace {
                             anchors.fill: parent
-                            source: Quickshell.shellPath("assets/sylvie-avatar.png")
-                            fillMode: Image.PreserveAspectCrop
-                            smooth: true
-                            mipmap: true
                         }
                     }
                 }
@@ -95,7 +91,7 @@ RowLayout {
                 StyledText {
                     Layout.alignment: Qt.AlignHCenter
                     horizontalAlignment: Text.AlignHCenter
-                    text: `PROTOTYPE 7\n${Tr.trCtx("UP %1", "system uptime").arg(root.uptimeText())}`
+                    text: `${Atomica.label}\n${Tr.trCtx("UP %1", "system uptime").arg(root.uptimeText())}`
                     lineHeight: 1.5
                     font: root.monoLabel
                     color: root.dim

@@ -9,7 +9,7 @@ import Caelestia.Services
 import qs.components
 import qs.services
 
-// Sylvie lock screen (design/Sylvie OS Shell.dc.html 1e): the "Sylvie" wallpaper (w10) under a
+// Atomica lock screen (design/Sylvie OS Shell.dc.html 1e): the current wallpaper under a
 // light walnut wash, the lock card bottom right, and session buttons (power off, restart, sleep,
 // log out) bottom left. Fades and rises in on lock; fades out on unlock.
 WlSessionLockSurface {
@@ -19,7 +19,8 @@ WlSessionLockSurface {
     required property Pam pam
 
     readonly property alias unlocking: unlockAnim.running
-    readonly property string lockWallpaper: "/usr/share/backgrounds/sylvie/w10.jpg"
+    // the current wallpaper (Atomica theme); the theme's first one if that can't be shown
+    readonly property string lockWallpaper: Atomica.wallpaper || Atomica.themeWallpaper
 
     contentItem.Config.screen: screen?.name ?? ""
     contentItem.Tokens.screen: screen?.name ?? ""
@@ -115,11 +116,11 @@ WlSessionLockSurface {
             asynchronous: true
         }
 
-        // fallback: the current wallpaper if the Sylvie one is missing
+        // fallback: the theme's first wallpaper (e.g. when the current one is a video)
         Image {
             anchors.fill: parent
             visible: sylvieWall.status === Image.Error
-            source: visible ? Wallpapers.current : ""
+            source: visible ? Atomica.themeWallpaper : ""
             fillMode: Image.PreserveAspectCrop
             asynchronous: true
         }

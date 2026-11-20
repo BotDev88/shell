@@ -19,13 +19,13 @@ Scope {
     id: root
 
     property bool open
-    property list<string> order: ["hello", "look", "keys", "switchboard", "additions", "done"]
+    property list<string> order: ["hello", "themes", "look", "keys", "switchboard", "additions", "done"]
     property int lastNotified: 0
     readonly property string stateDir: `${Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state"}/sylvie`
     readonly property string doneFile: `${stateDir}/welcomed`
 
     function show(): void {
-        order = ["hello", "look", "keys", "switchboard", "additions", "done"];
+        order = ["hello", "themes", "look", "keys", "switchboard", "additions", "done"];
         open = true;
     }
 
@@ -65,7 +65,7 @@ Scope {
             root.show();
         }
 
-        // one page on its own: switchboard, additions, keys, look, updates
+        // one page on its own: themes, switchboard, additions, keys, look, updates
         function page(name: string): void {
             root.showPage(name);
         }
@@ -132,7 +132,7 @@ Scope {
         FloatingWindow {
             id: win
 
-            title: Tr.tr("Welcome to Sylvie OS")
+            title: Tr.tr("Welcome to Atomica")
             color: Colours.palette.m3surface
             implicitWidth: 980
             implicitHeight: 640

@@ -11,6 +11,7 @@ PersistentProperties {
     property bool dashboard
     property bool utilities
     property bool sidebar
+    property bool sylvie // Sylvie's chat drawer (modules/sylvie)
 
     // Dashboard state
     property int dashboardTab

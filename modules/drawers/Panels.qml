@@ -9,6 +9,7 @@ import qs.modules.notifications as Notifications
 import qs.modules.osd as Osd
 import qs.modules.session as Session
 import qs.modules.sidebar as Sidebar
+import qs.modules.sylvie as SylvieChat
 import qs.modules.utilities as Utilities
 import qs.modules.bar.popouts as BarPopouts
 import qs.modules.utilities.toasts as Toasts
@@ -33,6 +34,7 @@ Item {
     readonly property alias utilities: utilities
     readonly property alias toasts: toasts
     readonly property alias sidebar: sidebar
+    readonly property alias sylvie: sylvie
 
     anchors.fill: parent
     anchors.margins: borderThickness
@@ -151,5 +153,16 @@ Item {
         anchors.bottom: utilities.top
         anchors.right: parent.right
         anchors.topMargin: -notifications.anchors.topMargin
+    }
+
+    // Sylvie's chat drawer, out of the bar on the left
+    SylvieChat.Wrapper {
+        id: sylvie
+
+        screenState: root.screenState
+
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        anchors.left: parent.left
     }
 }

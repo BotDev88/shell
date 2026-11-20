@@ -50,6 +50,17 @@ Scope {
     // qmllint disable unresolved-type
     CustomShortcut {
         // qmllint enable unresolved-type
+        name: "sylvie"
+        description: "Toggle Sylvie's chat"
+        onPressed: {
+            const screenState = ShellState.forActive();
+            screenState.sylvie = !screenState.sylvie;
+        }
+    }
+
+    // qmllint disable unresolved-type
+    CustomShortcut {
+        // qmllint enable unresolved-type
         name: "session"
         description: "Toggle session menu"
         onPressed: {

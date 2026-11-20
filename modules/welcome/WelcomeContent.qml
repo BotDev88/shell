@@ -18,8 +18,8 @@ Item {
     signal finished
 
     // pages to show, in order: the first-login tour, or a single page opened directly
-    property list<string> order: ["hello", "look", "keys", "switchboard", "additions", "done"]
-    readonly property list<string> allPages: ["hello", "look", "keys", "switchboard", "additions", "done", "updates"]
+    property list<string> order: ["hello", "themes", "look", "keys", "switchboard", "additions", "done"]
+    readonly property list<string> allPages: ["hello", "look", "keys", "switchboard", "additions", "done", "updates", "themes"]
     property int page: 0
     readonly property int pages: order.length
     property string realName
@@ -56,7 +56,7 @@ Item {
 
         StyledText {
             anchors.verticalCenter: parent.verticalCenter
-            text: "SYLVIE OS · PROTOTYPE 7"
+            text: `ATOMICA · ${Atomica.label}`
             font: Qt.font({ family: "IBM Plex Mono", pixelSize: 11, weight: Font.Medium, letterSpacing: 3 })
             color: Colours.palette.m3secondary
         }
@@ -99,6 +99,7 @@ Item {
         AdditionsPage {}
         DonePage {}
         UpdatesPage {}
+        ThemesPage {}
     }
 
     // ---- footer ----
@@ -189,11 +190,8 @@ Item {
                     height: 176
                     radius: 88
 
-                    Image {
+                    SylvieFace {
                         anchors.fill: parent
-                        source: Quickshell.shellPath("assets/sylvie-avatar.png")
-                        fillMode: Image.PreserveAspectCrop
-                        mipmap: true
                     }
                 }
             }
@@ -210,7 +208,7 @@ Item {
                 StyledText {
                     Layout.fillWidth: true
                     wrapMode: Text.WordWrap
-                    text: Tr.tr("I'm Sylvie. Prototype 7 is warmed up and ready. Let's pick your look, learn a few keys and add the apps you like. It takes a minute, and you can change all of it later.")
+                    text: Tr.tr("I'm Sylvie, and Atomica is warmed up and ready. Let's pick your look, learn a few keys and add the apps you like. It takes a minute, and you can change all of it later.")
                     font: Qt.font({ family: "Josefin Sans", pixelSize: 18 })
                     color: root.dim
                     lineHeight: 1.25
@@ -229,6 +227,101 @@ Item {
                         text: Tr.tr("TUBES: 6 WARM, 0 FLICKERING")
                         font: Qt.font({ family: "IBM Plex Mono", pixelSize: 10.5, weight: Font.Medium, letterSpacing: 2.2 })
                         color: root.dim
+                    }
+                }
+            }
+        }
+    }
+
+    // Atomica release themes: one tile per release (star icon, name, its four colours); a click
+    // runs `atomica-theme set`, which changes colours and wallpaper now, boot screens next boot.
+    component ThemesPage: ColumnLayout {
+        spacing: 18
+
+        PageTitle {
+            title: Tr.tr("Pick a theme")
+            sub: Tr.tr("Each Atomica release has its own colours and wallpapers. Change it any time with Super+Ctrl+T.")
+        }
+
+        Flickable {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            clip: true
+            contentHeight: themeGrid.implicitHeight
+            boundsBehavior: Flickable.StopAtBounds
+
+            GridLayout {
+                id: themeGrid
+
+                width: parent.width
+                columns: 5
+                rowSpacing: 12
+                columnSpacing: 12
+
+                Repeater {
+                    model: Atomica.releases
+
+                    Rectangle {
+                        id: themeTile
+
+                        required property var modelData
+                        readonly property bool current: modelData.slug === Atomica.slug
+
+                        Layout.fillWidth: true
+                        implicitHeight: 128
+                        radius: 18
+                        color: themeArea.containsMouse ? Colours.tPalette.m3surfaceContainerHigh : root.tile
+                        border.width: current ? 3 : 0
+                        border.color: Colours.palette.m3primary
+
+                        Column {
+                            anchors.centerIn: parent
+                            spacing: 6
+
+                            Image {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                width: 52
+                                height: 52
+                                source: `/usr/share/atomica/icons/png-256/atomica-${String(themeTile.modelData.number).padStart(2, "0")}-${themeTile.modelData.slug}.png`
+                                sourceSize.width: 104
+                                asynchronous: true
+                            }
+
+                            StyledText {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: `${themeTile.modelData.version} ${themeTile.modelData.codename}`
+                                font: Qt.font({ family: "Josefin Sans", pixelSize: 14, weight: Font.DemiBold })
+                            }
+
+                            Row {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                spacing: 4
+
+                                Repeater {
+                                    model: themeTile.modelData.colors
+
+                                    Rectangle {
+                                        required property var modelData
+
+                                        width: 14
+                                        height: 14
+                                        radius: 7
+                                        color: modelData.hex
+                                        border.width: 1
+                                        border.color: Qt.alpha(Colours.palette.m3onSurface, 0.25)
+                                    }
+                                }
+                            }
+                        }
+
+                        MouseArea {
+                            id: themeArea
+
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: Quickshell.execDetached(["atomica-theme", "set", themeTile.modelData.slug])
+                        }
                     }
                 }
             }
@@ -938,7 +1031,7 @@ Item {
                     spacing: 3
 
                     StyledText {
-                        text: Tr.tr("Local AI (optional)")
+                        text: Tr.tr("Local brain (optional)")
                         font: Qt.font({ family: "Josefin Sans", pixelSize: 16, weight: Font.DemiBold })
                     }
 
@@ -949,9 +1042,9 @@ Item {
                             if (sb.busyLine)
                                 return sb.busyLine;
                             if (sb.hw.suggestion.size === "none")
-                                return Tr.tr("%1 GB RAM: a bit light for running models here. Use a cloud key instead.").arg(sb.hw.ramGb);
+                                return Tr.tr("%1 GB RAM: a bit light for running a brain here. Use a cloud key instead.").arg(sb.hw.ramGb);
                             const gpu = sb.hw.vramGb > 0 ? Tr.tr(", %1 GB graphics").arg(sb.hw.vramGb) : "";
-                            return Tr.tr("%1 GB RAM%2: a %3 model fits (%4).").arg(sb.hw.ramGb).arg(gpu).arg(sb.hw.suggestion.size).arg(sb.hw.suggestion.model);
+                            return Tr.tr("Private and offline: answers stay on this computer. %1 GB RAM%2: %3 fits (Ollama comes with it).").arg(sb.hw.ramGb).arg(gpu).arg(sb.hw.suggestion.model);
                         }
                         font: Qt.font({ family: "IBM Plex Mono", pixelSize: 10.5 })
                         color: sb.busyLine ? Colours.palette.m3secondary : root.dim
@@ -961,9 +1054,13 @@ Item {
                 Pill {
                     visible: sb.hw.suggestion.size !== "none"
                     primary: true
-                    text: sb.status.ollamaInstalled ? Tr.tr("DOWNLOAD %1").arg(sb.hw.suggestion.model.toUpperCase()) : Tr.tr("INSTALL OLLAMA")
+                    text: Tr.tr("DOWNLOAD %1").arg(sb.hw.suggestion.model.toUpperCase())
                     icon: "download"
-                    onClicked: sb.status.ollamaInstalled ? sb.run(["ollama", "pull", sb.hw.suggestion.model]) : sb.run(["sylvie-additions", "install", "ollama"])
+                    // one click: Ollama first if it isn't there (Additions installs and starts it,
+                    // asking for the password), then the model
+                    onClicked: sb.run(["sh", "-c", 'command -v ollama >/dev/null || sylvie-additions install ollama || exit 1; '
+                        + 'for i in $(seq 30); do ollama list >/dev/null 2>&1 && break; sleep 1; done; '
+                        + 'echo "> downloading $0 (about 1.4 GB for qwen3:1.7b)"; ollama pull "$0"', sb.hw.suggestion.model])
                 }
             }
         }
