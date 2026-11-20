@@ -135,6 +135,12 @@ ColumnLayout {
                             objectName: "taskbarSylvieOrb"
                             anchors.horizontalCenter: parent.horizontalCenter
                         }
+
+                        // her local brain downloading (shown only while it does)
+                        BrainDownloadBadge {
+                            objectName: "taskbarBrainDownload"
+                            anchors.horizontalCenter: parent.horizontalCenter
+                        }
                     }
                 }
             }
