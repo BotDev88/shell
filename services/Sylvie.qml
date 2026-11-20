@@ -15,7 +15,12 @@ Singleton {
     readonly property string state: watch.connected ? remoteState : "offline"
     property string remoteState: "idle"
     readonly property bool online: watch.connected
-    readonly property bool busy: asker.connected || asker.pending !== ""
+    // the mic is open for her wake word ("Sylvie", "Hey Sylvie"; sylvied reports it with the state)
+    property bool remoteWake: false
+    readonly property bool wakeOn: online && remoteWake
+    // a conversation the wake word started: sylvied streams it on the watch connection
+    property bool wakeTalk: false
+    readonly property bool busy: asker.connected || asker.pending !== "" || wakeTalk
 
     // [{ role: "user" | "sylvie", text, pending, error, note }
     //  | { role: "confirm", id, text, answer: "" | "yes" | "no" | "expired" }]  (an Amber question)
@@ -128,6 +133,20 @@ Singleton {
         messages = m;
     }
 
+    // what the watch connection brings besides the state: a wake-word conversation ("session": "panel")
+    function wakeEvent(ev: var): void {
+        if (ev.type === "wake") {
+            wakeTalk = true;
+            messages = messages.concat([{ role: "user", text: qsTr("Listening…"), listening: true }, { role: "sylvie", text: "", pending: true }]);
+            return;
+        }
+        if (!wakeTalk)
+            return;
+        handleEvent(ev);
+        if (ev.type === "done" || ev.type === "error")
+            wakeTalk = false;
+    }
+
     function handle(line: string): void {
         let ev;
         try {
@@ -135,6 +154,10 @@ Singleton {
         } catch (e) {
             return;
         }
+        handleEvent(ev);
+    }
+
+    function handleEvent(ev: var): void {
         const last = messages[messages.length - 1];
         if (ev.type === "heard") {
             // the "Listening…" bubble becomes what she heard
@@ -152,7 +175,8 @@ Singleton {
             const m = messages.slice();
             const i = m.findIndex(x => x.role === "confirm" && x.id === ev.id);
             if (i >= 0 && !m[i].answer) {
-                m[i] = Object.assign({}, m[i], { answer: ev.yes ? "yes" : "expired" });
+                // answered aloud ("proceed" / "not now"), or nobody answered in time
+                m[i] = Object.assign({}, m[i], { answer: ev.yes ? "yes" : ev.how === "timeout" ? "expired" : "no" });
                 messages = m;
             }
         } else if (ev.type === "tool") {
@@ -190,8 +214,12 @@ Singleton {
             onRead: line => {
                 try {
                     const ev = JSON.parse(line);
-                    if (ev.type === "state")
+                    if (ev.type === "state") {
                         root.remoteState = ev.state;
+                        root.remoteWake = ev.wake === true;
+                    } else if (ev.session === "panel") {
+                        root.wakeEvent(ev);
+                    }
                 } catch (e) {}
             }
         }

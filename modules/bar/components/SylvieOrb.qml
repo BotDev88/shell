@@ -5,7 +5,8 @@ import qs.components
 import qs.services
 
 // Sylvie: the orb under the logo (approved mockup "Sylvie Orb and Chat", 18 Nov 2026).
-// idle = dim core · listening = gold pulse + mic badge (the mic-on state is always visible) ·
+// idle = dim core · listening = gold pulse + mic badge (the mic-on state is always visible; an
+// outlined badge while the mic is open only for the wake word) ·
 // thinking = an orange arc orbiting · speaking = orange ripples · offline = hollow, dim.
 // Click: open or close the chat drawer.
 Item {
@@ -144,23 +145,26 @@ Item {
         }
     }
 
-    // mic badge: the microphone is on
+    // mic badge: the microphone is on. Filled gold while she's listening to you; outlined while it's
+    // only open for her wake word ("Sylvie", "Hey Sylvie"), so an open mic is never hidden
     Rectangle {
-        visible: root.state === "listening"
+        readonly property bool hearing: root.state === "listening"
+
+        visible: hearing || (Sylvie.wakeOn && root.state !== "offline")
         anchors.right: body.right
         anchors.bottom: body.bottom
         anchors.margins: -3
         width: 18
         height: 18
         radius: 9
-        color: root.gold
-        border.width: 2
-        border.color: Colours.palette.m3surface
+        color: hearing ? root.gold : Colours.palette.m3surface
+        border.width: hearing ? 2 : 1.5
+        border.color: hearing ? Colours.palette.m3surface : root.gold
 
         MaterialIcon {
             anchors.centerIn: parent
             text: "mic"
-            color: Colours.palette.m3surface
+            color: parent.hearing ? Colours.palette.m3surface : root.gold
             font.pointSize: 8
         }
     }
