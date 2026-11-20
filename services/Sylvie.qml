@@ -17,7 +17,8 @@ Singleton {
     readonly property bool online: watch.connected
     readonly property bool busy: asker.connected || asker.pending !== ""
 
-    // [{ role: "user" | "sylvie", text, pending, error, note }]
+    // [{ role: "user" | "sylvie", text, pending, error, note }
+    //  | { role: "confirm", id, text, answer: "" | "yes" | "no" | "expired" }]  (an Amber question)
     property var messages: []
     // the brain that will actually answer (sylvied's "effective" brain: the local model when the
     // chosen one has no key); `fallback` is "no key", "no brain" or ""
@@ -92,6 +93,19 @@ Singleton {
         }
     }
 
+    // the operator's answer to an Amber question; sent on its own connection, since the asking
+    // one is busy streaming the reply
+    function answer(id: string, yes: bool): void {
+        const m = messages.slice();
+        const i = m.findIndex(x => x.role === "confirm" && x.id === id);
+        if (i < 0 || m[i].answer)
+            return;
+        m[i] = Object.assign({}, m[i], { answer: yes ? "yes" : "no" });
+        messages = m;
+        answerSock.pending = JSON.stringify({ op: "answer", id, yes });
+        answerSock.connected = true;
+    }
+
     function clear(): void {
         messages = [];
         oneShot(JSON.stringify({ op: "reset", session: "panel" }));
@@ -129,6 +143,21 @@ Singleton {
             if (i >= 0 && m[i].role === "user")
                 m[i] = { role: "user", text: ev.text || qsTr("(nothing heard)") };
             messages = m;
+        } else if (ev.type === "confirm") {
+            // the question card goes above the reply she's still writing
+            const m = messages.slice();
+            m.splice(Math.max(0, m.length - 1), 0, { role: "confirm", id: ev.id, text: ev.text, answer: "" });
+            messages = m;
+        } else if (ev.type === "confirm_closed") {
+            const m = messages.slice();
+            const i = m.findIndex(x => x.role === "confirm" && x.id === ev.id);
+            if (i >= 0 && !m[i].answer) {
+                m[i] = Object.assign({}, m[i], { answer: ev.yes ? "yes" : "expired" });
+                messages = m;
+            }
+        } else if (ev.type === "tool") {
+            if (ev.app)
+                updateLast({ note: qsTr("USING %1…").arg(String(ev.app).toUpperCase()) });
         } else if (ev.type === "text") {
             updateLast({ text: (last?.text ?? "") + ev.text });
         } else if (ev.type === "done") {
@@ -194,6 +223,24 @@ Singleton {
         }
         parser: SplitParser {
             onRead: line => root.handle(line)
+        }
+    }
+
+    Socket {
+        id: answerSock
+
+        property string pending
+
+        path: root.socketPath
+        onConnectedChanged: {
+            if (connected && pending) {
+                write(pending + "\n");
+                flush();
+                pending = "";
+            }
+        }
+        parser: SplitParser {
+            onRead: line => answerSock.connected = false
         }
     }
 

@@ -11,7 +11,8 @@ import qs.services
 
 // Sylvie's chat panel (approved mockup "Sylvie Orb and Chat", 18 Nov 2026): avatar, name and her
 // state on top; the conversation; the brain chip with this month's spend, then the ask pill.
-// Esc closes it. Action cards (Amber / Red) arrive with her tools (Phase 6, step 5).
+// Esc closes it. Amber action cards ("Shall I proceed?" with PROCEED / NOT NOW) come in the
+// conversation when her tools need an OK; Red (PIN) cards come with the PIN.
 Item {
     id: root
 
@@ -197,9 +198,81 @@ Item {
 
                     required property var modelData
                     readonly property bool mine: modelData.role === "user"
+                    readonly property bool asking: modelData.role === "confirm"
 
                     width: ListView.view.width
-                    implicitHeight: bubble.implicitHeight
+                    implicitHeight: asking ? card.implicitHeight : bubble.implicitHeight
+
+                    // Amber: she says what she'd do and waits for PROCEED or NOT NOW (2 minutes,
+                    // then it's a no). Once answered, the pills give way to what was decided.
+                    Rectangle {
+                        id: card
+
+                        visible: msg.asking
+                        width: parent.width
+                        implicitHeight: cardCol.implicitHeight + 32
+                        radius: 20
+                        color: root.tile
+                        border.width: 1
+                        border.color: msg.modelData.answer ? root.hair : root.gold
+
+                        ColumnLayout {
+                            id: cardCol
+
+                            anchors.fill: parent
+                            anchors.margins: 16
+                            spacing: 10
+
+                            RowLayout {
+                                spacing: 6
+
+                                MaterialIcon {
+                                    text: "front_hand"
+                                    color: root.gold
+                                    font.pointSize: 11
+                                }
+
+                                StyledText {
+                                    text: qsTr("AMBER · NEEDS YOUR OK")
+                                    font: Qt.font({ family: "IBM Plex Mono", pixelSize: 10, letterSpacing: 1.6 })
+                                    color: root.gold
+                                }
+                            }
+
+                            StyledText {
+                                Layout.fillWidth: true
+                                text: msg.modelData.text ?? ""
+                                wrapMode: Text.Wrap
+                                textFormat: Text.PlainText
+                                font: Qt.font({ family: "IBM Plex Sans", pixelSize: 14.5 })
+                                lineHeight: 1.18
+                                color: root.cream
+                            }
+
+                            RowLayout {
+                                visible: msg.asking && !msg.modelData.answer
+                                spacing: 10
+
+                                PillButton {
+                                    text: qsTr("PROCEED")
+                                    filled: true
+                                    onClicked: Sylvie.answer(msg.modelData.id, true)
+                                }
+
+                                PillButton {
+                                    text: qsTr("NOT NOW")
+                                    onClicked: Sylvie.answer(msg.modelData.id, false)
+                                }
+                            }
+
+                            StyledText {
+                                visible: !!msg.modelData.answer
+                                text: msg.modelData.answer === "yes" ? qsTr("✓ PROCEEDED") : msg.modelData.answer === "no" ? qsTr("NOT NOW") : qsTr("NO ANSWER, SO NOT NOW")
+                                font: Qt.font({ family: "IBM Plex Mono", pixelSize: 10, letterSpacing: 1.6 })
+                                color: msg.modelData.answer === "yes" ? root.orange : root.dim
+                            }
+                        }
+                    }
 
                     // The text's own one-line width, measured apart from the bubble: sizing the bubble
                     // from body.implicitWidth fed back through the wrap and squeezed short messages
@@ -214,6 +287,7 @@ Item {
                     Rectangle {
                         id: bubble
 
+                        visible: !msg.asking
                         anchors.right: msg.mine ? parent.right : undefined
                         anchors.left: msg.mine ? undefined : parent.left
                         width: msg.mine ? Math.min(Math.ceil(natural.advanceWidth) + 28 + 4, parent.width * 0.8) : parent.width * 0.94
@@ -348,6 +422,41 @@ Item {
                     }
                 }
             }
+        }
+    }
+
+    // 36px pill with a Plex Mono label; `filled` = orange with ink text, otherwise a hairline outline
+    component PillButton: Rectangle {
+        id: pb
+
+        property string text
+        property bool filled
+
+        signal clicked
+
+        implicitWidth: pbLabel.implicitWidth + 36
+        implicitHeight: 36
+        radius: 18
+        color: filled ? root.orange : "transparent"
+        border.width: filled ? 0 : 1
+        border.color: root.hair
+
+        Accessible.role: Accessible.Button
+        Accessible.name: text
+
+        StateLayer {
+            radius: pb.radius
+            color: pb.filled ? Colours.palette.m3onPrimary : root.cream
+            onClicked: pb.clicked()
+        }
+
+        StyledText {
+            id: pbLabel
+
+            anchors.centerIn: parent
+            text: pb.text
+            font: Qt.font({ family: "IBM Plex Mono", pixelSize: 11, weight: Font.DemiBold, letterSpacing: 1.6 })
+            color: pb.filled ? Colours.palette.m3onPrimary : root.cream
         }
     }
 
